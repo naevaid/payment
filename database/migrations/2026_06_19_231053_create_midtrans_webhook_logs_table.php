@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('midtrans_webhook_logs', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('transaction_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('transaction_id')->nullable()->index();
             $table->string('order_id')->nullable()->index();
             $table->string('midtrans_transaction_id')->nullable()->index();
             $table->string('transaction_status')->nullable();
