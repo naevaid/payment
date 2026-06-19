@@ -1,96 +1,43 @@
-<!DOCTYPE html>
-<html lang="id">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Register - {{ config('app.name', 'payment') }}</title>
-        <style>
-            body {
-                margin: 0;
-                min-height: 100vh;
-                display: grid;
-                place-items: center;
-                font-family: Arial, Helvetica, sans-serif;
-                background: #f8fafc;
-                color: #0f172a;
-                padding: 24px;
-            }
+@extends('layouts.auth')
 
-            .card {
-                width: min(520px, 100%);
-                background: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 24px;
-                padding: 32px;
-                box-shadow: 0 24px 60px rgba(15, 23, 42, 0.08);
-            }
+@section('title', 'Register')
+@section('eyebrow', 'Register')
+@section('heading', 'Buat akun dashboard utama')
+@section('subheading', 'Pendaftaran awal ini bisa dipakai untuk tim internal Naeva. Setelah akun dibuat, welcome email akan dikirim ke alamat yang didaftarkan.')
 
-            .eyebrow {
-                color: #1d4ed8;
-                font-size: 13px;
-                font-weight: 700;
-                text-transform: uppercase;
-                letter-spacing: 0.05em;
-            }
+@section('content')
+    <form method="POST" action="{{ route('register') }}">
+        @csrf
 
-            h1 {
-                margin: 12px 0;
-                font-size: 32px;
-            }
+        <div class="field">
+            <label for="name">Nama lengkap</label>
+            <input id="name" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name">
+        </div>
 
-            p {
-                color: #475569;
-                line-height: 1.7;
-                margin: 0 0 18px;
-            }
+        <div class="field">
+            <label for="email">Email</label>
+            <input id="email" type="email" name="email" value="{{ old('email') }}" required autocomplete="username">
+        </div>
 
-            .actions {
-                display: flex;
-                gap: 12px;
-                flex-wrap: wrap;
-                margin-top: 24px;
-            }
+        <div class="field">
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password" required autocomplete="new-password">
+        </div>
 
-            .button {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                min-height: 44px;
-                padding: 0 18px;
-                border-radius: 12px;
-                text-decoration: none;
-                font-weight: 600;
-                border: 1px solid #cbd5e1;
-            }
+        <div class="field">
+            <label for="password_confirmation">Konfirmasi password</label>
+            <input id="password_confirmation" type="password" name="password_confirmation" required autocomplete="new-password">
+        </div>
 
-            .button-primary {
-                color: #fff;
-                background: #1d4ed8;
-                border-color: #1d4ed8;
-            }
+        <div class="button-row">
+            <button class="button button-primary" type="submit">Register</button>
+            <a class="button button-secondary" href="{{ route('login') }}">Sudah punya akun</a>
+        </div>
+    </form>
 
-            .button-secondary {
-                color: #0f172a;
-                background: #fff;
-            }
-        </style>
-    </head>
-    <body>
-        <main class="card">
-            <div class="eyebrow">Register Placeholder</div>
-            <h1>Halaman register publik sementara placeholder.</h1>
-            <p>
-                Tombol register pada landing page sudah aktif agar struktur navigasi publik siap lebih dulu.
-            </p>
-            <p>
-                Jika nantinya akun dibuat terbatas untuk internal Naeva, route ini bisa dialihkan ke proses invite atau
-                dinonaktifkan tanpa mengubah struktur halaman depan.
-            </p>
-
-            <div class="actions">
-                <a class="button button-primary" href="{{ route('home') }}">Kembali ke Beranda</a>
-                <a class="button button-secondary" href="{{ route('login') }}">Buka Login</a>
-            </div>
-        </main>
-    </body>
-</html>
+    <div class="muted-links">
+        <span>Butuh akses cepat?</span>
+        <a href="{{ route('password.request') }}">Reset password</a>
+        <a href="{{ route('home') }}">Kembali ke beranda</a>
+    </div>
+@endsection

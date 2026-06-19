@@ -22,7 +22,8 @@ class ExampleTest extends TestCase
         $response = $this->get('/login');
 
         $response->assertOk()
-            ->assertSee('Halaman login sedang disiapkan.');
+            ->assertSee('Masuk ke dashboard utama')
+            ->assertSee('Lupa password?');
     }
 
     public function test_the_register_page_is_accessible(): void
@@ -30,6 +31,7 @@ class ExampleTest extends TestCase
         $response = $this->get('/register');
 
         $response->assertOk()
-            ->assertSee('Halaman register publik sementara placeholder.');
+            ->assertSee('Buat akun dashboard utama')
+            ->assertSee('Register');
     }
 }

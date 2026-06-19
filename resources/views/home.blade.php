@@ -290,8 +290,16 @@
                 </a>
 
                 <nav class="nav-actions">
-                    <a class="button button-secondary" href="{{ route('login') }}">Login</a>
-                    <a class="button button-primary" href="{{ route('register') }}">Register</a>
+                    @auth
+                        <a class="button button-secondary" href="{{ route('dashboard') }}">Dashboard</a>
+                        <form method="POST" action="{{ route('logout') }}" style="margin: 0;">
+                            @csrf
+                            <button class="button button-primary" type="submit" style="cursor: pointer;">Logout</button>
+                        </form>
+                    @else
+                        <a class="button button-secondary" href="{{ route('login') }}">Login</a>
+                        <a class="button button-primary" href="{{ route('register') }}">Register</a>
+                    @endauth
                 </nav>
             </header>
 
@@ -305,8 +313,13 @@
                     </p>
 
                     <div class="hero-actions">
-                        <a class="button button-primary" href="{{ route('login') }}">Login</a>
-                        <a class="button button-secondary" href="{{ route('register') }}">Register</a>
+                        @auth
+                            <a class="button button-primary" href="{{ route('dashboard') }}">Buka Dashboard</a>
+                            <a class="button button-secondary" href="{{ route('password.request') }}">Reset Password</a>
+                        @else
+                            <a class="button button-primary" href="{{ route('login') }}">Login</a>
+                            <a class="button button-secondary" href="{{ route('register') }}">Register</a>
+                        @endauth
                     </div>
 
                     <div class="hero-notes">
