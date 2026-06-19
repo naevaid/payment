@@ -10,17 +10,21 @@ Tujuan utamanya:
 - menerima request charge dari client app internal
 - menerima webhook Midtrans
 - meneruskan status pembayaran ke callback URL milik project asal
+- menyediakan halaman publik dasar dan fondasi login internal
 
 Dokumen produk utama saat ini ada di `docs/PRD.md`.
 
 ## Status Saat Ini
 
-Saat file ini dibuat, repository `D:\payment` masih berisi dokumen PRD dan belum berisi codebase aplikasi final.
+Repository `D:\payment` sekarang sudah berisi codebase Laravel yang aktif, bukan lagi sekadar dokumen awal.
 
-Karena itu, panduan deploy ini dibagi menjadi 2 tahap:
+Komponen yang sudah tersedia:
 
-1. bootstrap server dan folder project
-2. deploy/update code setelah aplikasi sudah dibangun
+- route publik `/` berupa landing page sederhana dengan tombol `Login` dan `Register`
+- endpoint `/healthz` untuk health check
+- route API v1 untuk charge, webhook Midtrans, project info, dan lookup transaksi
+- migration awal untuk `projects`, `transactions`, `midtrans_webhook_logs`, dan `callback_forwarding_logs`
+- service Midtrans, verifikasi signature webhook, queue callback forwarding, dan seeder user utama
 
 ## Akses Server
 
@@ -34,263 +38,232 @@ Catatan:
 
 - alias `vps` diasumsikan sudah dikonfigurasi di mesin lokal Anda
 - semua perintah server di bawah dijalankan setelah masuk dengan `ssh vps`
+- fokus deploy hanya untuk project `payment`, jangan menyentuh konfigurasi site lain
 
 ## Remote Repository
 
-Repository GitHub yang dipakai untuk project ini adalah:
+Repository GitHub yang dipakai:
 
 ```text
 https://github.com/naevaid/payment.git
 ```
 
-Alur yang disarankan:
+Alur aman:
 
 1. kerjakan perubahan di lokal
 2. commit ke git lokal
 3. push ke `origin/main`
-4. baru login ke server dengan `ssh vps`
-5. pull perubahan terbaru di server
+4. login ke server dengan `ssh vps`
+5. pull perubahan terbaru di `/var/www/payment/repo`
 
-Ini lebih aman dibanding mengedit langsung di server karena histori perubahan tetap rapi dan rollback lebih mudah.
+## Stack VPS Aktual
 
-## Rekomendasi Stack VPS
-
-Untuk kebutuhan `payment.naeva.id`, stack yang paling masuk akal di VPS adalah:
+Stack yang saat ini dipakai untuk deploy service ini:
 
 - Ubuntu VPS
 - Nginx
-- PHP 8.3
+- PHP-FPM `php8.5-fpm`
 - Laravel
-- PostgreSQL atau MySQL
-- Redis
-- Supervisor
-- Certbot atau reverse proxy HTTPS yang setara
+- MySQL atau PostgreSQL untuk database aplikasi
+- Redis untuk queue, cache, dan callback forwarding
+- Supervisor untuk queue worker
+- Let's Encrypt SSL
 
-Alasan rekomendasi ini:
+Kondisi server yang sudah diketahui:
 
-- service ini dominan API, webhook, queue, retry job, dan dashboard internal ringan
-- Laravel sangat cocok untuk webhook processing, queue worker, scheduler, dan admin panel sederhana
-- Redis memudahkan queue forwarding callback async
-- Nginx + PHP-FPM + Supervisor adalah pola yang stabil dan ringan di VPS
-
-Jika nanti diputuskan stack lain, file ini bisa diperbarui. Tetapi untuk fase awal, asumsi deploy paling aman adalah stack di atas.
+- domain `payment.naeva.id` sudah live
+- vhost Nginx untuk `payment.naeva.id` sudah dibuat
+- SSL Let's Encrypt sudah aktif
+- HTTPS sudah aktif
+- `/healthz` sudah merespons `200`
+- path aplikasi di server: `/var/www/payment/repo`
 
 ## Struktur Folder Server
 
-Project ini disarankan ditempatkan di:
-
-```text
-/var/www/payment
-```
-
-Struktur minimum awal:
-
-```text
-/var/www/payment
-  /app
-  /shared
-  /releases
-  /repo
-```
-
-Arti folder:
-
-- `app`: symlink atau copy release aktif
-- `shared`: file persistent seperti `.env`, storage, atau asset runtime
-- `releases`: hasil rilis per timestamp jika nanti memakai model zero-downtime sederhana
-- `repo`: clone git utama
-
-Jika ingin sederhana di fase awal, cukup pakai:
+Path kerja utama:
 
 ```text
 /var/www/payment/repo
 ```
 
-## Bootstrap Server Awal
+Deploy saat ini diasumsikan sederhana dan langsung berbasis repo kerja di path tersebut.
 
-Jalankan di server:
+## Environment Production Minimum
 
-```bash
-ssh vps
-sudo mkdir -p /var/www/payment/repo
-sudo chown -R $USER:$USER /var/www/payment
-cd /var/www/payment
-```
-
-Jika repository GitHub sudah siap:
-
-```bash
-git clone https://github.com/naevaid/payment.git /var/www/payment/repo
-cd /var/www/payment/repo
-```
-
-Jika folder sudah ada dan tinggal update:
-
-```bash
-cd /var/www/payment/repo
-git fetch origin
-git pull origin main
-```
-
-## Checklist Sebelum Deploy Code
-
-Sebelum aplikasi benar-benar dideploy, minimal harus sudah jelas:
-
-- stack aplikasi final
-- kebutuhan runtime: PHP-FPM, Redis, database, queue worker
-- database yang dipakai
-- queue/worker yang dipakai
-- environment variables untuk Midtrans
-- domain dan reverse proxy yang akan dipakai
-
-Karena berdasarkan `docs/PRD.md`, service ini akan menangani webhook dan forwarding async, maka sangat disarankan sejak awal menyiapkan:
-
-- database transaksi
-- queue worker
-- retry mechanism
-- log monitoring
-
-## Catatan SSL Sertifikat
-
-Domain `payment.naeva.id` saat ini perlu diatur SSL sertifikatnya terlebih dulu sebelum dianggap siap production.
-
-Prioritas urutannya:
-
-1. pastikan DNS `payment.naeva.id` sudah mengarah ke VPS yang benar
-2. siapkan vhost Nginx untuk domain `payment.naeva.id`
-3. terbitkan SSL sertifikat
-4. aktifkan redirect HTTP ke HTTPS
-5. baru lakukan uji webhook dan callback production
-
-Jika memakai Certbot di VPS, pola umumnya:
-
-```bash
-ssh vps
-sudo certbot --nginx -d payment.naeva.id
-```
-
-Jika SSL masih belum aktif, jangan pakai endpoint production Midtrans karena webhook dan callback service ini wajib berjalan lewat HTTPS.
-
-## Rekomendasi Environment
-
-Karena fungsi proyek ini kritikal, environment minimum yang disarankan:
-
-- Nginx sebagai reverse proxy
-- PHP-FPM untuk menjalankan aplikasi
-- queue worker supervisor
-- Redis untuk queue
-- PostgreSQL atau MySQL untuk transaksi
-- HTTPS aktif dengan sertifikat valid untuk `payment.naeva.id`
-- secret Midtrans hanya di server
-
-## Draft Variable Yang Akan Dibutuhkan
-
-Nama final bisa berubah sesuai stack, tetapi secara konsep minimal akan butuh:
+Pastikan `.env` production minimal berisi:
 
 ```env
 APP_NAME=payment
 APP_ENV=production
-APP_URL=https://payment.naeva.id
-
 APP_DEBUG=false
+APP_URL=https://payment.naeva.id
+APP_TIMEZONE=Asia/Jakarta
 
-DB_HOST=
-DB_PORT=
-DB_DATABASE=
-DB_USERNAME=
+LOG_CHANNEL=stack
+LOG_STACK=daily
+LOG_LEVEL=info
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=payment
+DB_USERNAME=payment
 DB_PASSWORD=
+DB_CHARSET=utf8mb4
+DB_COLLATION=utf8mb4_unicode_ci
+
+SESSION_DRIVER=database
+CACHE_STORE=redis
+QUEUE_CONNECTION=redis
 
 REDIS_HOST=127.0.0.1
 REDIS_PORT=6379
-QUEUE_CONNECTION=redis
+REDIS_DB=0
+REDIS_CACHE_DB=1
+REDIS_QUEUE=payment
+REDIS_QUEUE_CONNECTION=default
+REDIS_QUEUE_RETRY_AFTER=120
 
 MIDTRANS_SERVER_KEY=
 MIDTRANS_CLIENT_KEY=
+MIDTRANS_MERCHANT_ID=
 MIDTRANS_IS_PRODUCTION=true
+MIDTRANS_BASE_URL=https://app.midtrans.com
+MIDTRANS_SNAP_PATH=/snap/v1/transactions
+MIDTRANS_TIMEOUT=10
+MIDTRANS_VERIFY_SSL=true
 
-LOG_LEVEL=info
+PAYMENT_DEFAULT_CURRENCY=IDR
+PAYMENT_AUTH_APP_ID_HEADER=X-App-ID
+PAYMENT_AUTH_SECRET_HEADER=X-Secret-Key
+PAYMENT_CALLBACK_QUEUE=payment-callbacks
+PAYMENT_CALLBACK_TIMEOUT=10
+PAYMENT_CALLBACK_MAX_ATTEMPTS=3
+PAYMENT_CALLBACK_BACKOFF=60,300,900
+PAYMENT_CALLBACK_USER_AGENT=Naeva-Payment-Callback/1.0
 ```
 
-## Alur Lokal Sebelum Deploy
+Catatan:
 
-Setelah repository lokal sudah menjadi git repo:
+- di server production, gunakan kredensial Midtrans production
+- jangan menyalin `.env` lokal development ke server secara mentah
+- pastikan `APP_KEY` production sudah ada
+
+## Route Penting
+
+Route publik:
+
+- `GET /`
+- `GET /login`
+- `GET /register`
+- `GET /healthz`
+
+Route API:
+
+- `POST /api/v1/charge`
+- `POST /api/v1/callback/midtrans`
+- `GET /api/v1/projects/me`
+- `GET /api/v1/transactions/{gatewayOrderId}`
+
+## Seeder Penting
+
+Seeder akun utama internal:
+
+- email: `business@naeva.id`
+- password: di-hash otomatis lewat model `User`
+
+Seeder yang tersedia:
+
+- `Database\\Seeders\\PrimaryUserSeeder`
+
+## Alur Lokal Sebelum Push
+
+Jalankan di lokal:
 
 ```bash
 cd D:\payment
+php artisan test
 git status
 git add .
-git commit -m "Initial payment service docs and deployment notes"
-git push -u origin main
+git commit -m "Build payment API foundation and public homepage"
+git push origin main
 ```
 
-Jika belum ada repo lokal:
+## Alur Deploy Ke Server
 
-```bash
-cd D:\payment
-git init -b main
-git remote add origin https://github.com/naevaid/payment.git
-git add .
-git commit -m "Initial payment service docs and deployment notes"
-git push -u origin main
-```
-
-## Alur Deploy Saat Codebase Sudah Ada
-
-Urutan aman yang disarankan:
-
-1. pastikan perubahan lokal sudah `commit` dan `push`
-2. masuk ke server dengan `ssh vps`
-3. masuk ke `/var/www/payment/repo`
-4. `git fetch origin && git pull origin main`
-5. install/update dependency
-6. update `.env` jika ada perubahan variable
-7. jalankan migration jika memang ada perubahan schema
-8. restart app service dan worker
-9. verifikasi endpoint healthcheck
-10. verifikasi webhook endpoint tidak error
-
-## Bootstrap Server Untuk Repo Ini
-
-Karena remote repo sudah diketahui, bootstrap di server menjadi:
+Urutan aman deploy untuk project ini:
 
 ```bash
 ssh vps
-sudo mkdir -p /var/www/payment/repo
-sudo chown -R $USER:$USER /var/www/payment
-git clone https://github.com/naevaid/payment.git /var/www/payment/repo
 cd /var/www/payment/repo
+git fetch origin
+git pull origin main
+composer install --no-dev --optimize-autoloader
+php artisan optimize:clear
+php artisan migrate --force
+php artisan db:seed --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+sudo systemctl reload php8.5-fpm
+sudo systemctl reload nginx
+sudo supervisorctl reread
+sudo supervisorctl update
+sudo supervisorctl restart all
 ```
+
+Catatan:
+
+- `php artisan db:seed --force` aman untuk user utama karena memakai `updateOrCreate`
+- jika supervisor di server belum punya program worker khusus payment, bagian `supervisorctl` bisa gagal dan harus disesuaikan dulu
+- reload Nginx dan PHP-FPM aman karena hanya reload service, bukan restart brutal
+
+## Queue Worker
+
+Aplikasi ini mengandalkan queue untuk callback forwarding. Minimal perlu ada worker yang memproses queue:
+
+- connection: `redis`
+- queue utama callback: `payment-callbacks`
+
+Contoh perintah worker manual:
+
+```bash
+php artisan queue:work redis --queue=payment-callbacks --sleep=1 --tries=3 --timeout=120
+```
+
+Supervisor production sebaiknya diarahkan ke pola setara perintah di atas.
 
 ## Validasi Setelah Deploy
 
 Minimal lakukan pengecekan:
 
-- endpoint utama aplikasi merespons normal
-- endpoint callback Midtrans bisa diakses
-- log tidak menunjukkan error boot
+```bash
+curl -I https://payment.naeva.id
+curl https://payment.naeva.id/healthz
+```
+
+Lalu validasi:
+
+- homepage publik muncul, bukan JSON bootstrap lama
+- tombol `Login` dan `Register` tampil
+- endpoint `/healthz` tetap `200`
+- migration berhasil masuk
 - queue worker aktif
-- test charge dummy berhasil dibuat
-- webhook test berhasil mengubah status transaksi
-- forwarding callback ke client app tercatat
+- log Laravel tidak menunjukkan error boot
 
-## Catatan Penting dari PRD
+## Catatan Penting
 
-Poin-poin berikut dari `docs/PRD.md` harus dianggap wajib saat implementasi nanti:
-
-- sistem bersifat multi-tenant berbasis `app_id`
-- kredensial Midtrans harus terpusat
-- webhook Midtrans harus diverifikasi signature-nya
-- callback ke project asal harus async dan punya retry
-- dashboard minimal perlu melihat sukses/gagal forwarding
+- service ini bersifat multi-tenant berbasis `app_id`
+- kredensial Midtrans harus tetap terpusat di server `payment`
+- webhook Midtrans wajib diverifikasi signature-nya
+- callback ke project asal diproses async dan punya retry
+- deploy harus berhati-hati agar tidak mengganggu project lain di VPS
 
 ## Next Step
 
-Setelah codebase aplikasi mulai dibuat, file ini sebaiknya diperbarui agar memuat:
+Setelah deploy ini selesai, tahap berikut yang disarankan:
 
-- stack aktual project
-- perintah deploy yang benar-benar executable
-- nama service process manager
-- nama worker queue
-- langkah rollback
-- healthcheck URL
-- lokasi log produksi
+- pasang auth web internal sungguhan untuk akun utama
+- buat CRUD admin untuk `projects`
+- aktifkan worker supervisor khusus queue `payment-callbacks`
+- uji charge sandbox end-to-end hingga callback forwarding

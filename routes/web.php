@@ -3,13 +3,12 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return response()->json([
-        'name' => 'payment.naeva.id',
-        'service' => 'centralized_payment_gateway',
-        'status' => 'bootstrapped',
-        'ssl_required' => true,
-    ]);
-});
+    return view('home');
+})->name('home');
+
+Route::view('/login', 'auth.login')->name('login');
+
+Route::view('/register', 'auth.register')->name('register');
 
 Route::get('/healthz', function () {
     return response()->json([

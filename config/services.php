@@ -35,4 +35,23 @@ return [
         ],
     ],
 
+    'midtrans' => [
+        'server_key' => env('MIDTRANS_SERVER_KEY'),
+        'client_key' => env('MIDTRANS_CLIENT_KEY'),
+        'merchant_id' => env('MIDTRANS_MERCHANT_ID'),
+        'is_production' => (bool) env('MIDTRANS_IS_PRODUCTION', true),
+        'base_url' => env(
+            'MIDTRANS_BASE_URL',
+            env('MIDTRANS_IS_PRODUCTION', true)
+                ? 'https://app.midtrans.com'
+                : 'https://app.sandbox.midtrans.com',
+        ),
+        'snap_path' => env('MIDTRANS_SNAP_PATH', '/snap/v1/transactions'),
+        'timeout' => (int) env('MIDTRANS_TIMEOUT', 10),
+        'verify_ssl' => (bool) env('MIDTRANS_VERIFY_SSL', true),
+        'enabled_payments' => env('MIDTRANS_ENABLED_PAYMENTS')
+            ? array_map('trim', explode(',', (string) env('MIDTRANS_ENABLED_PAYMENTS')))
+            : [],
+    ],
+
 ];
