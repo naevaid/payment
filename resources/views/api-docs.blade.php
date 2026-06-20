@@ -38,6 +38,7 @@
                     radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 28%),
                     linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
                 color: var(--text);
+                overflow-x: hidden;
             }
 
             a {
@@ -210,6 +211,7 @@
                 grid-template-columns: 280px 1fr;
                 gap: 24px;
                 padding-bottom: 42px;
+                min-width: 0;
             }
 
             .sidebar {
@@ -217,6 +219,7 @@
                 top: 24px;
                 align-self: start;
                 padding: 24px;
+                min-width: 0;
             }
 
             .sidebar h2,
@@ -238,6 +241,7 @@
 
             .content {
                 padding: 32px;
+                min-width: 0;
             }
 
             .section {
@@ -300,9 +304,13 @@
                 background: #0f172a;
                 color: #e2e8f0;
                 border: 1px solid #1e293b;
+                max-width: 100%;
                 overflow-x: auto;
+                overflow-y: hidden;
                 font-size: 13px;
                 line-height: 1.7;
+                -webkit-overflow-scrolling: touch;
+                white-space: pre;
             }
 
             .inline-code {
@@ -317,6 +325,9 @@
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 16px;
+                display: block;
+                max-width: 100%;
+                overflow-x: auto;
                 overflow: hidden;
                 border-radius: 18px;
                 border: 1px solid var(--border);
@@ -329,6 +340,7 @@
                 text-align: left;
                 vertical-align: top;
                 font-size: 14px;
+                overflow-wrap: anywhere;
             }
 
             th {
@@ -364,6 +376,10 @@
             }
 
             @media (max-width: 640px) {
+                .shell {
+                    width: min(100% - 20px, 1180px);
+                }
+
                 .topbar {
                     flex-direction: column;
                     align-items: flex-start;
@@ -380,7 +396,13 @@
                 .hero-copy,
                 .sidebar,
                 .content {
-                    padding: 24px;
+                    padding: 20px;
+                }
+
+                .code-block {
+                    padding: 14px;
+                    border-radius: 16px;
+                    font-size: 12px;
                 }
             }
         </style>
