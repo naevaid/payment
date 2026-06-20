@@ -27,4 +27,8 @@ return [
         ),
         'user_agent' => env('PAYMENT_CALLBACK_USER_AGENT', 'Naeva-Payment-Callback/1.0'),
     ],
+
+    'retention' => [
+        'operational_logs_days' => (int) env('PAYMENT_OPERATIONAL_LOG_RETENTION_DAYS', 15),
+    ],
 ];

@@ -732,6 +732,62 @@ class DashboardManagementTest extends TestCase
         $this->assertStringNotContainsString('APP-BILLING-DELTA', $callbackExport->streamedContent());
     }
 
+    public function test_webhook_logs_pagination_is_visible_and_functional(): void
+    {
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'app_id' => 'APP-PAGINATE',
+            'project_name' => 'Paginate Project',
+            'secret_key' => 'paginate-project-secret-1234',
+            'default_callback_url' => 'https://paginate.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $transaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-PAGINATION-BASE',
+            'client_order_id' => 'CLIENT-PAGINATION-BASE',
+            'amount' => 120000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Pending,
+            'callback_status' => CallbackStatus::Queued,
+            'callback_url' => 'https://paginate.naeva.id/payment/callback',
+        ]);
+
+        foreach (range(1, 13) as $index) {
+            MidtransWebhookLog::create([
+                'transaction_id' => $transaction->id,
+                'order_id' => 'GW-PAGE-'.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+                'midtrans_transaction_id' => 'MID-PAGE-'.str_pad((string) $index, 2, '0', STR_PAD_LEFT),
+                'transaction_status' => 'pending',
+                'signature_key' => 'signature-page-'.$index,
+                'payload' => ['status' => 'pending', 'index' => $index],
+                'headers' => ['x-source' => 'test'],
+                'is_signature_valid' => true,
+                'processing_status' => 'processed',
+                'received_at' => Carbon::parse('2026-06-20 10:00:00')->addMinutes($index),
+                'processed_at' => Carbon::parse('2026-06-20 10:01:00')->addMinutes($index),
+            ]);
+        }
+
+        $pageOneResponse = $this->actingAs($user)->get(route('dashboard.webhook-logs.index'));
+
+        $pageOneResponse->assertOk()
+            ->assertSee('GW-PAGE-13')
+            ->assertSee('GW-PAGE-02')
+            ->assertDontSee('GW-PAGE-01')
+            ->assertSee('pagination-bar', false)
+            ->assertSee('page=2', false);
+
+        $pageTwoResponse = $this->actingAs($user)->get(route('dashboard.webhook-logs.index', ['page' => 2]));
+
+        $pageTwoResponse->assertOk()
+            ->assertSee('GW-PAGE-01')
+            ->assertDontSee('GW-PAGE-13')
+            ->assertSee('pagination-bar', false);
+    }
+
     public function test_authenticated_user_can_retry_failed_callback_from_dashboard(): void
     {
         Queue::fake();
