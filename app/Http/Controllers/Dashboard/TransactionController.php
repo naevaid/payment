@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Enums\CallbackStatus;
+use App\Enums\TransactionStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Project;
 use App\Models\Transaction;
@@ -10,6 +12,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Response;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -28,6 +31,8 @@ class TransactionController extends Controller
             'transactions' => $transactions,
             'projects' => Project::query()->orderBy('project_name')->get(['id', 'project_name', 'app_id']),
             'filters' => $filters,
+            'transactionStatuses' => collect(TransactionStatus::cases())->map(fn (TransactionStatus $status) => $status->value),
+            'callbackStatuses' => collect(CallbackStatus::cases())->map(fn (CallbackStatus $status) => $status->value),
         ]);
     }
 
@@ -99,8 +104,8 @@ class TransactionController extends Controller
             'search' => ['nullable', 'string'],
             'app_id' => ['nullable', 'string'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
-            'status' => ['nullable', 'string'],
-            'callback_status' => ['nullable', 'string'],
+            'status' => ['nullable', 'string', Rule::in(collect(TransactionStatus::cases())->map(fn (TransactionStatus $status) => $status->value)->all())],
+            'callback_status' => ['nullable', 'string', Rule::in(collect(CallbackStatus::cases())->map(fn (CallbackStatus $status) => $status->value)->all())],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
             'date_to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date_from'],
         ]);

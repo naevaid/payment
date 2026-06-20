@@ -597,6 +597,23 @@ class DashboardManagementTest extends TestCase
         $this->assertStringNotContainsString('APP-BILLING-BETA', $exportResponse->streamedContent());
     }
 
+    public function test_transactions_filters_use_dropdown_options_for_status_fields(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get(route('dashboard.transactions.index'));
+
+        $response->assertOk()
+            ->assertSee('<select class="select" id="status" name="status">', false)
+            ->assertSee('<select class="select" id="callback_status" name="callback_status">', false)
+            ->assertSee('Semua status transaksi')
+            ->assertSee('Semua status callback')
+            ->assertSee('pending')
+            ->assertSee('settlement')
+            ->assertSee('queued')
+            ->assertSee('success');
+    }
+
     public function test_authenticated_user_can_filter_webhook_and_callback_logs_by_app_id_and_export_csv(): void
     {
         $user = User::factory()->create();

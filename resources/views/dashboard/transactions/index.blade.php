@@ -32,12 +32,22 @@
 
                     <div class="field">
                         <label for="status">Status transaksi</label>
-                        <input class="input" id="status" type="text" name="status" value="{{ $filters['status'] ?? '' }}" placeholder="pending / settlement / failed">
+                        <select class="select" id="status" name="status">
+                            <option value="">Semua status transaksi</option>
+                            @foreach ($transactionStatuses as $status)
+                                <option value="{{ $status }}" @selected(($filters['status'] ?? '') === $status)>{{ ucfirst($status) }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="field">
                         <label for="callback_status">Status callback</label>
-                        <input class="input" id="callback_status" type="text" name="callback_status" value="{{ $filters['callback_status'] ?? '' }}" placeholder="queued / success / failed">
+                        <select class="select" id="callback_status" name="callback_status">
+                            <option value="">Semua status callback</option>
+                            @foreach ($callbackStatuses as $status)
+                                <option value="{{ $status }}" @selected(($filters['callback_status'] ?? '') === $status)>{{ ucfirst($status) }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="field">
