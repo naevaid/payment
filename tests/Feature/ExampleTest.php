@@ -28,7 +28,20 @@ class ExampleTest extends TestCase
             ->assertSee('POST /charge')
             ->assertSee('GET /transactions/lookup')
             ->assertSee('GET /transactions/{gateway_order_id}/callback-history')
+            ->assertSee('/api/callback/midtrans')
+            ->assertSee('/midtrans/finish')
             ->assertSee('Callback Forwarding ke Project Asal');
+    }
+
+    public function test_the_midtrans_finish_redirect_page_is_accessible(): void
+    {
+        $response = $this->get('/midtrans/finish?order_id=INV-001&transaction_status=settlement');
+
+        $response->assertOk()
+            ->assertSee('Pembayaran selesai di Midtrans')
+            ->assertSee('INV-001')
+            ->assertSee('settlement')
+            ->assertSee('/midtrans/finish');
     }
 
     public function test_the_login_page_is_accessible(): void

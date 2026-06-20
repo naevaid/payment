@@ -3,7 +3,7 @@
 @section('title', 'Callback Logs')
 @section('eyebrow', 'Operasional Payment')
 @section('page-title', 'Callback Forwarding Logs')
-@section('page-subtitle', 'Monitoring log outbound callback ke project asal, termasuk status success/failed, attempt, response code, dan error untuk kebutuhan retry operasional.')
+@section('page-subtitle', 'Pantau pengiriman callback ke project asal, lihat hasil delivery, dan lakukan retry manual jika diperlukan.')
 
 @section('content')
     <section class="panel">

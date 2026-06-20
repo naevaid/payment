@@ -3,7 +3,7 @@
 @section('title', 'Webhook Logs')
 @section('eyebrow', 'Operasional Payment')
 @section('page-title', 'Webhook Logs')
-@section('page-subtitle', 'Audit seluruh callback Midtrans yang masuk, termasuk validitas signature, status proses, dan relasi ke transaksi tenant.')
+@section('page-subtitle', 'Lacak notifikasi Midtrans yang masuk, cek validitas signature, dan telusuri kaitannya dengan transaksi tenant.')
 
 @section('content')
     <section class="panel">

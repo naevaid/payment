@@ -3,7 +3,7 @@
 @section('title', 'Transactions')
 @section('eyebrow', 'Operasional Payment')
 @section('page-title', 'Transactions')
-@section('page-subtitle', 'Monitoring transaksi global lintas project, dengan filter tenant, status pembayaran, dan status callback forwarding sesuai kebutuhan PRD.')
+@section('page-subtitle', 'Pantau transaksi dari seluruh project, cek status pembayaran, dan tindak lanjuti callback dari satu tampilan yang lebih ringkas.')
 
 @section('content')
     <section class="panel">

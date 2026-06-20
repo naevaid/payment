@@ -555,7 +555,7 @@ Nilai `callback_status` yang saat ini digunakan:
 Endpoint ini dipakai Midtrans, bukan client app internal.
 
 - Method: `POST`
-- Endpoint: `/api/v1/callback/midtrans`
+- Endpoint: `/api/callback/midtrans`
 
 Perilaku:
 

@@ -16,6 +16,7 @@ Route::get('/', function () {
 })->name('home');
 
 Route::view('/docs/api', 'api-docs')->name('docs.api');
+Route::view('/midtrans/finish', 'midtrans-finish')->name('midtrans.finish');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
