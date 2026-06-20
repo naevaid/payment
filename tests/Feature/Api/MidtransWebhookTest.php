@@ -91,6 +91,23 @@ class MidtransWebhookTest extends TestCase
             ->assertJsonPath('message', 'Midtrans notification endpoint is reachable.');
     }
 
+    public function test_midtrans_notification_post_ping_from_veritrans_is_accepted_for_url_check(): void
+    {
+        $response = $this->withHeaders([
+            'User-Agent' => 'Veritrans',
+        ])->postJson('/api/v1/callback/midtrans', []);
+
+        $response->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('message', 'Midtrans notification endpoint is reachable.');
+
+        $this->assertDatabaseHas('midtrans_webhook_logs', [
+            'processing_status' => 'reachable_check',
+            'notes' => 'Midtrans notification URL reachability check received.',
+            'is_signature_valid' => false,
+        ]);
+    }
+
     public function test_duplicate_midtrans_webhook_is_accepted_without_dispatching_duplicate_callback_job(): void
     {
         Queue::fake();

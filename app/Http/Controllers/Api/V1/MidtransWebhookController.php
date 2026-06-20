@@ -17,7 +17,10 @@ class MidtransWebhookController extends Controller
     public function store(Request $request, MidtransService $midtransService): JsonResponse
     {
         $payload = $request->all();
-        $signatureValid = $midtransService->verifySignature($payload);
+        $isReachabilityCheck = $this->isReachabilityCheck($request, $payload);
+        $signatureValid = $isReachabilityCheck
+            ? false
+            : $midtransService->verifySignature($payload);
 
         $webhookLog = MidtransWebhookLog::create([
             'order_id' => $payload['order_id'] ?? null,
@@ -30,6 +33,19 @@ class MidtransWebhookController extends Controller
             'processing_status' => 'received',
             'received_at' => now(),
         ]);
+
+        if ($isReachabilityCheck) {
+            $webhookLog->forceFill([
+                'processing_status' => 'reachable_check',
+                'notes' => 'Midtrans notification URL reachability check received.',
+                'processed_at' => now(),
+            ])->save();
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Midtrans notification endpoint is reachable.',
+            ]);
+        }
 
         if (! $signatureValid) {
             $webhookLog->forceFill([
@@ -114,5 +130,20 @@ class MidtransWebhookController extends Controller
             && $transaction->status->value === $mappedStatus
             && (blank($incomingTransactionId) || $transaction->midtrans_transaction_id === $incomingTransactionId)
             && (string) ($transaction->payment_type ?? '') === (string) ($incomingPaymentType ?? '');
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function isReachabilityCheck(Request $request, array $payload): bool
+    {
+        $userAgent = strtolower((string) $request->userAgent());
+
+        return str_contains($userAgent, 'veritrans')
+            && blank($payload['order_id'] ?? null)
+            && blank($payload['signature_key'] ?? null)
+            && blank($payload['transaction_status'] ?? null)
+            && blank($payload['status_code'] ?? null)
+            && blank($payload['gross_amount'] ?? null);
     }
 }
