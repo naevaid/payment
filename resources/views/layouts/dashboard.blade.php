@@ -5,7 +5,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
         <title>@yield('title') - {{ config('app.name', 'payment') }}</title>
-        <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
+        @php
+            $dashboardCssPath = public_path('css/dashboard.css');
+            $dashboardCssVersion = file_exists($dashboardCssPath) ? filemtime($dashboardCssPath) : time();
+        @endphp
+        <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}?v={{ $dashboardCssVersion }}">
     </head>
     <body>
         <div class="admin-shell">
