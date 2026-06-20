@@ -505,7 +505,7 @@ Accept: application/json
       {
         "attempt": 3,
         "event_type": "payment.status.updated",
-        "callback_url": "https://project-history.test/api/payment/callback",
+        "callback_url": "https://client-app.example.com/api/payment/callback",
         "success": true,
         "response_status_code": 200,
         "error_message": null,
@@ -517,7 +517,7 @@ Accept: application/json
       {
         "attempt": 2,
         "event_type": "payment.status.updated",
-        "callback_url": "https://project-history.test/api/payment/callback",
+        "callback_url": "https://client-app.example.com/api/payment/callback",
         "success": false,
         "response_status_code": 502,
         "error_message": "HTTP 502",
@@ -554,7 +554,7 @@ Nilai `callback_status` yang saat ini digunakan:
 
 Endpoint ini dipakai Midtrans, bukan client app internal.
 
-- Method: `POST`
+- Method: `GET`, `HEAD`, `POST`
 - Endpoint: `/api/v1/callback/midtrans`
 
 URL konfigurasi Midtrans production:
@@ -564,10 +564,13 @@ URL konfigurasi Midtrans production:
 
 Perilaku:
 
+- menerima `GET`/`HEAD` reachability check dari Midtrans dengan response `200`
 - memverifikasi `signature_key` dari Midtrans
 - mencari transaksi berdasarkan `order_id` yang dikirim Midtrans
 - memperbarui status transaksi internal
 - menjadwalkan callback forwarding async ke endpoint project asal
+
+Untuk kompatibilitas test URL notifikasi Midtrans, request `POST` dari `Veritrans` yang bersifat ping/reachability check atau memakai dummy `order_id` yang tidak dikenal juga akan dibalas `200` agar konfigurasi Midtrans dapat disimpan tanpa mengganggu transaksi internal.
 
 ### Response Jika Signature Invalid
 
@@ -579,15 +582,28 @@ Perilaku:
 
 Status: `403`
 
-### Response Jika Transaksi Tidak Ditemukan
+### Response Reachability Check
 
 ```json
 {
-  "message": "Transaction not found."
+  "ok": true,
+  "message": "Midtrans notification endpoint is reachable."
 }
 ```
 
-Status: `404`
+Status: `200`
+
+### Response Ignored Test Notification
+
+```json
+{
+  "ok": true,
+  "message": "Midtrans notification endpoint is reachable.",
+  "ignored": true
+}
+```
+
+Status: `200`
 
 ### Response Accepted
 

@@ -508,33 +508,71 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
     "authentication": {
       "mode": "hmac_signature",
       "signature_algorithm": "sha256",
-      "timestamp_tolerance_seconds": 300
+      "timestamp_tolerance_seconds": 300,
+      "request_headers": {
+        "app_id": "X-App-ID",
+        "timestamp": "X-Timestamp",
+        "signature": "X-Payment-Signature"
+      },
+      "legacy_secret_header": {
+        "enabled": true,
+        "header": "X-Secret-Key"
+      }
     },
     "integration": {
       "base_url": "https://payment.naeva.id/api/v1",
       "environment": "production",
+      "currency": "IDR",
       "endpoints": {
         "charge": "/api/v1/charge",
+        "project_profile": "/api/v1/projects/me",
         "transaction_lookup": "/api/v1/transactions/lookup",
+        "transaction_detail": "/api/v1/transactions/{gatewayOrderId}",
         "callback_history": "/api/v1/transactions/{gatewayOrderId}/callback-history"
       }
     },
     "callback": {
+      "default_url": "https://client-app.example.com/payment/callback",
       "retry": {
         "queue": "payment-callbacks",
+        "timeout_seconds": 10,
         "max_attempts": 3,
         "backoff_seconds": [60, 300, 900]
       },
       "delivery_headers": {
+        "app_id": "X-Payment-App-Id",
+        "event": "X-Payment-Event",
         "attempt": "X-Payment-Attempt",
         "timestamp": "X-Payment-Timestamp",
-        "delivery_id": "X-Payment-Delivery-Id"
+        "delivery_id": "X-Payment-Delivery-Id",
+        "signature": "X-Payment-Signature"
+      },
+      "signature": {
+        "algorithm": "sha256",
+        "uses_project_secret_key": true
       }
     },
     "readiness": {
       "status": "ready",
       "can_charge": true,
-      "has_default_callback_url": true
+      "has_default_callback_url": true,
+      "checks": [
+        {
+          "name": "project_active",
+          "passed": true,
+          "message": "Project aktif dan dapat mengakses API tenant."
+        },
+        {
+          "name": "default_callback_url_configured",
+          "passed": true,
+          "message": "Default callback URL sudah terpasang."
+        },
+        {
+          "name": "hmac_signature_auth_ready",
+          "passed": true,
+          "message": "Gunakan HMAC signature untuk integrasi tenant yang disarankan."
+        }
+      ]
     }
   }
 }</code></pre>
@@ -614,15 +652,38 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
     "payment_type": "bank_transfer",
     "redirect_url": "https://midtrans.test/snap/lookup-001",
     "callback_url": "https://client-app.example.com/api/payment/callback",
+    "metadata": {
+      "invoice_id": 7001
+    },
+    "customer_details": {
+      "first_name": "Lookup User",
+      "email": "lookup@example.com"
+    },
+    "timestamps": {
+      "created_at": "2026-06-20 02:30:00",
+      "updated_at": "2026-06-20 02:30:00",
+      "paid_at": null,
+      "expires_at": null,
+      "last_webhook_at": "2026-06-20 02:29:00"
+    },
     "latest_webhook": {
+      "status": "pending",
       "processing_status": "processed",
-      "is_signature_valid": true
+      "is_signature_valid": true,
+      "received_at": "2026-06-20 02:29:00",
+      "processed_at": "2026-06-20 02:29:00"
     },
     "latest_callback": {
       "attempt": 1,
+      "event_type": "payment.status.updated",
+      "callback_url": "https://client-app.example.com/api/payment/callback",
       "success": false,
       "response_status_code": 500,
-      "delivery_id": "delivery-lookup-001"
+      "error_message": "HTTP 500",
+      "delivery_id": "delivery-lookup-001",
+      "next_retry_at": "2026-06-20 02:31:00",
+      "dispatched_at": "2026-06-20 02:30:30",
+      "responded_at": "2026-06-20 02:30:31"
     }
   }
 }</code></pre>
@@ -650,17 +711,37 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
     "payment_type": "bank_transfer",
     "redirect_url": "https://app.midtrans.com/snap/v2/vtweb/snap-token-xyz",
     "callback_url": "https://client-app.example.com/api/payment/notification",
+    "metadata": {
+      "invoice_id": 1001
+    },
+    "customer_details": {
+      "first_name": "Budi"
+    },
     "timestamps": {
+      "created_at": "2026-06-20 02:25:00",
+      "updated_at": "2026-06-20 02:30:00",
+      "paid_at": null,
+      "expires_at": null,
       "last_webhook_at": "2026-06-20 02:29:00"
     },
     "latest_webhook": {
       "status": "pending",
-      "processing_status": "processed"
+      "processing_status": "processed",
+      "is_signature_valid": true,
+      "received_at": "2026-06-20 02:29:00",
+      "processed_at": "2026-06-20 02:29:00"
     },
     "latest_callback": {
       "attempt": 1,
+      "event_type": "payment.status.updated",
+      "callback_url": "https://client-app.example.com/api/payment/notification",
       "success": false,
-      "response_status_code": 500
+      "response_status_code": 500,
+      "error_message": "HTTP 500",
+      "delivery_id": "delivery-001",
+      "next_retry_at": "2026-06-20 02:31:00",
+      "dispatched_at": "2026-06-20 02:30:30",
+      "responded_at": "2026-06-20 02:30:31"
     }
   }
 }</code></pre>
@@ -679,15 +760,27 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
     "history": [
       {
         "attempt": 3,
+        "event_type": "payment.status.updated",
+        "callback_url": "https://client-app.example.com/api/payment/callback",
         "success": true,
         "response_status_code": 200,
-        "delivery_id": "delivery-003"
+        "error_message": null,
+        "delivery_id": "delivery-003",
+        "next_retry_at": null,
+        "dispatched_at": "2026-06-20 02:29:00",
+        "responded_at": "2026-06-20 02:29:01"
       },
       {
         "attempt": 2,
+        "event_type": "payment.status.updated",
+        "callback_url": "https://client-app.example.com/api/payment/callback",
         "success": false,
         "response_status_code": 502,
-        "delivery_id": "delivery-002"
+        "error_message": "HTTP 502",
+        "delivery_id": "delivery-002",
+        "next_retry_at": "2026-06-20 02:35:00",
+        "dispatched_at": "2026-06-20 02:28:00",
+        "responded_at": "2026-06-20 02:28:01"
       }
     ]
   }
@@ -714,9 +807,22 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
   "message": "Invalid signature."
 }</code></pre>
 
+                            <h3>Response reachability check</h3>
+                            <pre class="code-block"><code>{
+  "ok": true,
+  "message": "Midtrans notification endpoint is reachable."
+}</code></pre>
+
                             <h3>Response accepted</h3>
                             <pre class="code-block"><code>{
   "status": "accepted"
+}</code></pre>
+
+                            <h3>Response ignored test notification</h3>
+                            <pre class="code-block"><code>{
+  "ok": true,
+  "message": "Midtrans notification endpoint is reachable.",
+  "ignored": true
 }</code></pre>
                         </section>
 
@@ -909,8 +1015,8 @@ Accept: application/json</code></pre>
             </main>
 
             <footer class="footer-copy">
-                Dokumen publik ini diringkas dari implementasi aktif dan rencana di folder `docs/`. Untuk pengembangan internal,
-                file sumber tetap tersedia di repository pada `docs/API.md`.
+                Dokumen publik ini mengikuti implementasi aktif pada service Payment. Untuk kebutuhan internal dan sumber lengkap,
+                file referensi tetap tersedia di repository pada `docs/API.md`.
             </footer>
         </div>
     </body>
