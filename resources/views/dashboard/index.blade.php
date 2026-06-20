@@ -3,10 +3,11 @@
 @section('title', 'Dashboard')
 @section('eyebrow', 'Overview')
 @section('page-title', 'Dashboard utama payment service')
-@section('page-subtitle', 'Ringkasan ini mengikuti kebutuhan PRD: monitoring transaksi global, tenant/project, webhook Midtrans, status forwarding callback, dan area operasi yang akan menyusul.')
+@section('page-subtitle', 'Ringkasan ini mengikuti kebutuhan PRD: monitoring transaksi global, tenant/project, webhook Midtrans, status forwarding callback, serta health operasional queue callback yang sudah aktif.')
 
 @section('page-actions')
     <a class="button" href="{{ route('dashboard.transactions.index') }}">Buka Transactions</a>
+    <a class="button" href="{{ route('dashboard.callback-logs.index', ['result' => 'failed']) }}">Callback bermasalah</a>
     <a class="button button-primary" href="{{ route('dashboard.projects.create') }}">Tambah Project</a>
 @endsection
 
@@ -49,17 +50,56 @@
             <div class="grid grid-3">
                 <div class="summary-card">
                     <strong>Menu aktif sekarang</strong>
-                    <span>Dashboard overview, Projects / Tenants, Transactions, Webhook Logs, dan Callback Logs.</span>
+                    <span>Dashboard overview, Projects / Tenants, Transactions, Webhook Logs, Callback Logs, retry manual callback, dan health queue callback.</span>
                 </div>
 
                 <div class="summary-card">
                     <strong>Menu next sesuai PRD</strong>
-                    <span>Retry Manual Callback, reporting lintas tenant, queue monitoring, dan health ops untuk reliability.</span>
+                    <span>Reporting owner-level, analytics nominal settlement, dan penyempurnaan dokumentasi integrasi final.</span>
                 </div>
 
                 <div class="summary-card">
                     <strong>Tujuan operasional</strong>
                     <span>Memusatkan monitoring charge, webhook Midtrans, dan forwarding callback untuk semua project internal Naeva.</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-body">
+            <div class="panel-heading">
+                <div>
+                    <h2>Queue & Callback Health Ops</h2>
+                    <p>Visibilitas operasional untuk backlog callback, retry terjadwal, dan kesiapan queue forwarding async.</p>
+                </div>
+
+                <a class="button" href="{{ route('dashboard.callback-logs.index') }}">Buka callback logs</a>
+            </div>
+
+            <div class="grid grid-4">
+                <div class="stat-card">
+                    <span class="label">Queue connection</span>
+                    <span class="value">{{ strtoupper($callbackHealth['queue_connection']) }}</span>
+                    <div class="meta">{{ $callbackHealth['async_mode'] ? 'Async callback forwarding aktif' : 'Masih berjalan sinkron' }}</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="label">Callback queue</span>
+                    <span class="value" style="font-size: 22px;">{{ $callbackHealth['callback_queue'] }}</span>
+                    <div class="meta">Max {{ $callbackHealth['max_attempts'] }} attempt | backoff {{ implode(', ', $callbackHealth['backoff']) }} detik</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="label">Callback backlog</span>
+                    <span class="value">{{ number_format($callbackHealth['backlog_transactions']) }}</span>
+                    <div class="meta">{{ number_format($stats['queued_callbacks']) }} queued, {{ number_format($stats['callback_failed']) }} failed, {{ number_format($stats['callback_skipped']) }} skipped</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="label">Retry terjadwal</span>
+                    <span class="value">{{ number_format($callbackHealth['retry_scheduled']) }}</span>
+                    <div class="meta">Retry berikutnya {{ $callbackHealth['next_retry_at']?->diffForHumans() ?? 'belum ada jadwal' }}</div>
                 </div>
             </div>
         </div>
@@ -96,25 +136,51 @@
             <div class="panel-body">
                 <div class="panel-heading">
                     <div>
-                        <h2>Fokus reliability</h2>
-                        <p>Ringkasan area yang disebut eksplisit di PRD untuk tahap lanjutan.</p>
+                        <h2>Aksi callback prioritas</h2>
+                        <p>Log callback yang paling perlu perhatian untuk retry manual atau pengecekan konfigurasi project.</p>
                     </div>
+
+                    <a class="button" href="{{ route('dashboard.callback-logs.index', ['result' => 'failed']) }}">Lihat yang gagal</a>
                 </div>
 
-                <div class="list">
-                    <div class="list-item">
-                        <strong>Retry manual callback</strong>
-                        <span>Perlu action admin untuk mengirim ulang callback jika endpoint project tujuan down.</span>
+                @if ($callbackHealthLogs->isEmpty())
+                    <div class="empty-state">Belum ada callback queued, failed, atau skipped yang perlu perhatian.</div>
+                @else
+                    <div class="list">
+                        @foreach ($callbackHealthLogs as $entry)
+                            @php
+                                $log = $entry['log'];
+                                $stateBadge = match ($entry['callback_state']) {
+                                    'success' => 'badge-success',
+                                    'queued', 'pending' => 'badge-warning',
+                                    'failed', 'skipped' => 'badge-danger',
+                                    default => 'badge-muted',
+                                };
+                            @endphp
+                            <div class="list-item">
+                                <strong>{{ $log->transaction?->gateway_order_id ?? 'Callback tanpa transaksi' }}</strong>
+                                <span>{{ $log->project?->project_name ?? '-' }} | {{ $log->project?->app_id ?? '-' }}</span>
+                                <span>
+                                    <span class="badge {{ $stateBadge }}">{{ $entry['callback_state'] }}</span>
+                                    Attempt {{ $log->attempt }}/{{ $callbackHealth['max_attempts'] }} | Retry tersisa {{ $entry['retries_remaining'] }}
+                                </span>
+                                <span>{{ $log->error_message ?: 'Menunggu hasil callback berikutnya.' }}</span>
+                                <span>Next retry: {{ $log->next_retry_at?->format('d M Y H:i:s') ?? 'tidak terjadwal' }}</span>
+                                <div class="table-actions" style="margin-top: 12px;">
+                                    <a class="button" href="{{ route('dashboard.callback-logs.show', $log) }}">Detail log</a>
+                                    @if ($entry['is_retryable'])
+                                        <form class="inline-form" method="POST" action="{{ route('dashboard.callback-logs.retry', $log) }}">
+                                            @csrf
+                                            <button class="button button-primary" type="submit">Retry Manual Callback</button>
+                                        </form>
+                                    @elseif ($log->transaction)
+                                        <a class="button" href="{{ route('dashboard.transactions.show', $log->transaction) }}">Lihat transaksi</a>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
-                    <div class="list-item">
-                        <strong>Redis queue worker</strong>
-                        <span>Disiapkan agar forwarding callback async lebih stabil dibanding mode sinkron.</span>
-                    </div>
-                    <div class="list-item">
-                        <strong>Monitoring lintas tenant</strong>
-                        <span>Filter per project dan status forwarding harus menjadi alat operasi utama tim internal.</span>
-                    </div>
-                </div>
+                @endif
             </div>
         </div>
     </section>

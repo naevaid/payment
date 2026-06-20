@@ -98,6 +98,13 @@ class DashboardManagementTest extends TestCase
 
     public function test_authenticated_user_can_view_operational_dashboard_pages(): void
     {
+        config([
+            'queue.default' => 'redis',
+            'payment.callback.queue' => 'payment-callbacks',
+            'payment.callback.max_attempts' => 3,
+            'payment.callback.backoff' => [60, 300, 900],
+        ]);
+
         $user = User::factory()->create();
 
         $project = Project::create([
@@ -153,6 +160,71 @@ class DashboardManagementTest extends TestCase
             'responded_at' => now(),
         ]);
 
+        $failedTransaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-FAILED-001',
+            'client_order_id' => 'CLIENT-FAILED-001',
+            'amount' => 99000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Settlement,
+            'callback_status' => CallbackStatus::Failed,
+            'callback_url' => 'https://ops.naeva.id/payment/callback',
+        ]);
+
+        $failedCallbackLog = CallbackForwardingLog::create([
+            'transaction_id' => $failedTransaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://ops.naeva.id/payment/callback',
+            'attempt' => 2,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['status' => 'settlement'],
+            'request_headers' => ['X-Signature' => 'retry-signature'],
+            'response_status_code' => 500,
+            'response_body' => 'server error',
+            'success' => false,
+            'error_message' => 'HTTP 500',
+            'next_retry_at' => now()->addMinute(),
+            'dispatched_at' => now()->subMinute(),
+        ]);
+
+        $skippedTransaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-SKIPPED-001',
+            'client_order_id' => 'CLIENT-SKIPPED-001',
+            'amount' => 45000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Pending,
+            'callback_status' => CallbackStatus::Skipped,
+            'callback_url' => null,
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $skippedTransaction->id,
+            'project_id' => $project->id,
+            'callback_url' => '',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['status' => 'pending'],
+            'request_headers' => ['X-Signature' => 'skip-signature'],
+            'response_status_code' => null,
+            'response_body' => null,
+            'success' => false,
+            'error_message' => 'Callback URL is not configured.',
+            'dispatched_at' => now()->subSeconds(30),
+            'responded_at' => now()->subSeconds(30),
+        ]);
+
+        $this->actingAs($user)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Queue & Callback Health Ops', false)
+            ->assertSee('payment-callbacks')
+            ->assertSee('GW-FAILED-001')
+            ->assertSee('GW-SKIPPED-001')
+            ->assertSee('Retry Manual Callback')
+            ->assertSee('Live')
+            ->assertSee('Partial');
+
         $this->actingAs($user)
             ->get(route('dashboard.transactions.index'))
             ->assertOk()
@@ -185,6 +257,11 @@ class DashboardManagementTest extends TestCase
             ->assertOk()
             ->assertSee('payment.status.updated')
             ->assertSee('ok');
+
+        $this->actingAs($user)
+            ->get(route('dashboard.callback-logs.show', $failedCallbackLog))
+            ->assertOk()
+            ->assertSee('HTTP 500');
     }
 
     public function test_authenticated_user_can_filter_dashboard_logs_by_date_and_export_csv(): void

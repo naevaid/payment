@@ -81,27 +81,27 @@
                         <span class="menu-icon">RT</span>
                         <span class="menu-copy">
                             <strong>Retry Manual Callback</strong>
-                            <small>Action operasional untuk retry callback gagal</small>
+                            <small>Sudah aktif dari callback log detail dan ringkasan health ops dashboard</small>
                         </span>
-                        <span class="menu-tag">Next</span>
+                        <span class="menu-tag">Live</span>
                     </div>
 
                     <div class="menu-link is-muted">
                         <span class="menu-icon">RP</span>
                         <span class="menu-copy">
                             <strong>Reporting & Filter Lanjutan</strong>
-                            <small>Export, analytics, dan filter lintas tenant</small>
+                            <small>Filter lintas tenant sudah aktif; analytics nominal owner-level masih dilanjutkan</small>
                         </span>
-                        <span class="menu-tag">Planned</span>
+                        <span class="menu-tag">Partial</span>
                     </div>
 
                     <div class="menu-link is-muted">
                         <span class="menu-icon">OP</span>
                         <span class="menu-copy">
                             <strong>Queue & Health Ops</strong>
-                            <small>Redis worker, retry, dan health monitoring</small>
+                            <small>Ringkasan backlog callback, retry schedule, dan queue forwarding kini tampil di dashboard</small>
                         </span>
-                        <span class="menu-tag">Planned</span>
+                        <span class="menu-tag">Live</span>
                     </div>
                 </div>
 
