@@ -11,7 +11,22 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/callback/midtrans', [MidtransWebhookController::class, 'store']);
 
     Route::middleware(AuthenticateProjectRequest::class)->group(function (): void {
-        $serializeTransaction = function (Transaction $transaction): array {
+        $serializeCallbackLog = function ($log): array {
+            return [
+                'attempt' => $log->attempt,
+                'event_type' => $log->event_type,
+                'callback_url' => $log->callback_url,
+                'success' => $log->success,
+                'response_status_code' => $log->response_status_code,
+                'error_message' => $log->error_message,
+                'delivery_id' => $log->request_headers['X-Payment-Delivery-Id'] ?? null,
+                'next_retry_at' => $log->next_retry_at?->toDateTimeString(),
+                'dispatched_at' => $log->dispatched_at?->toDateTimeString(),
+                'responded_at' => $log->responded_at?->toDateTimeString(),
+            ];
+        };
+
+        $serializeTransaction = function (Transaction $transaction) use ($serializeCallbackLog): array {
             $latestWebhook = $transaction->webhookLogs()
                 ->latest('id')
                 ->first();
@@ -47,13 +62,7 @@ Route::prefix('v1')->group(function (): void {
                     'processed_at' => $latestWebhook->processed_at?->toDateTimeString(),
                 ] : null,
                 'latest_callback' => $latestCallback ? [
-                    'attempt' => $latestCallback->attempt,
-                    'success' => $latestCallback->success,
-                    'response_status_code' => $latestCallback->response_status_code,
-                    'error_message' => $latestCallback->error_message,
-                    'next_retry_at' => $latestCallback->next_retry_at?->toDateTimeString(),
-                    'dispatched_at' => $latestCallback->dispatched_at?->toDateTimeString(),
-                    'responded_at' => $latestCallback->responded_at?->toDateTimeString(),
+                    ...$serializeCallbackLog($latestCallback),
                 ] : null,
             ];
         };
@@ -116,6 +125,37 @@ Route::prefix('v1')->group(function (): void {
 
             return response()->json([
                 'data' => $serializeTransaction($transaction),
+            ]);
+        });
+
+        Route::get('/transactions/{gatewayOrderId}/callback-history', function (Request $request, string $gatewayOrderId) use ($serializeCallbackLog) {
+            $project = $request->attributes->get('project');
+
+            $validated = $request->validate([
+                'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
+            ]);
+
+            $limit = (int) ($validated['limit'] ?? 5);
+
+            $transaction = Transaction::query()
+                ->where('project_id', $project->id)
+                ->where('gateway_order_id', $gatewayOrderId)
+                ->firstOrFail();
+
+            $logs = $transaction->callbackForwardingLogs()
+                ->latest('id')
+                ->limit($limit)
+                ->get()
+                ->map(fn ($log): array => $serializeCallbackLog($log))
+                ->values();
+
+            return response()->json([
+                'data' => [
+                    'gateway_order_id' => $transaction->gateway_order_id,
+                    'order_id' => $transaction->client_order_id,
+                    'callback_status' => $transaction->callback_status->value,
+                    'history' => $logs,
+                ],
             ]);
         });
     });

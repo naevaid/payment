@@ -538,6 +538,113 @@ class ChargeApiTest extends TestCase
             ->assertJsonPath('data.customer_details.first_name', 'Detail User');
     }
 
+    public function test_project_can_get_callback_delivery_history_for_transaction(): void
+    {
+        $project = Project::create([
+            'app_id' => 'project_history_prod',
+            'project_name' => 'Project History',
+            'secret_key' => 'secret-history-123',
+            'default_callback_url' => 'https://project-history.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $transaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'PROJECTHISTORY-01JABC1234567890',
+            'client_order_id' => 'INV-HISTORY-001',
+            'amount' => 145000,
+            'currency' => 'IDR',
+            'status' => 'settlement',
+            'callback_status' => 'queued',
+            'callback_url' => 'https://project-history.test/api/payment/callback',
+            'payment_type' => 'bank_transfer',
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $transaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://project-history.test/api/payment/callback',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['transaction_status' => 'settlement'],
+            'request_headers' => [
+                'X-Payment-App-Id' => $project->app_id,
+                'X-Payment-Delivery-Id' => 'delivery-001',
+            ],
+            'response_status_code' => 500,
+            'response_body' => 'temporary error',
+            'success' => false,
+            'error_message' => 'HTTP 500',
+            'next_retry_at' => now()->addMinute(),
+            'dispatched_at' => now()->subMinutes(3),
+            'responded_at' => now()->subMinutes(3),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $transaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://project-history.test/api/payment/callback',
+            'attempt' => 2,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['transaction_status' => 'settlement'],
+            'request_headers' => [
+                'X-Payment-App-Id' => $project->app_id,
+                'X-Payment-Delivery-Id' => 'delivery-002',
+            ],
+            'response_status_code' => 502,
+            'response_body' => 'bad gateway',
+            'success' => false,
+            'error_message' => 'HTTP 502',
+            'next_retry_at' => now()->addMinutes(5),
+            'dispatched_at' => now()->subMinutes(2),
+            'responded_at' => now()->subMinutes(2),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $transaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://project-history.test/api/payment/callback',
+            'attempt' => 3,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['transaction_status' => 'settlement'],
+            'request_headers' => [
+                'X-Payment-App-Id' => $project->app_id,
+                'X-Payment-Delivery-Id' => 'delivery-003',
+            ],
+            'response_status_code' => 200,
+            'response_body' => 'ok',
+            'success' => true,
+            'error_message' => null,
+            'next_retry_at' => null,
+            'dispatched_at' => now()->subMinute(),
+            'responded_at' => now()->subMinute(),
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/transactions/PROJECTHISTORY-01JABC1234567890/callback-history?limit=2',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get(
+            '/api/v1/transactions/PROJECTHISTORY-01JABC1234567890/callback-history?limit=2',
+            $headers,
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.gateway_order_id', 'PROJECTHISTORY-01JABC1234567890')
+            ->assertJsonPath('data.order_id', 'INV-HISTORY-001')
+            ->assertJsonPath('data.callback_status', 'queued')
+            ->assertJsonCount(2, 'data.history')
+            ->assertJsonPath('data.history.0.attempt', 3)
+            ->assertJsonPath('data.history.0.success', true)
+            ->assertJsonPath('data.history.0.delivery_id', 'delivery-003')
+            ->assertJsonPath('data.history.1.attempt', 2)
+            ->assertJsonPath('data.history.1.response_status_code', 502)
+            ->assertJsonPath('data.history.1.error_message', 'HTTP 502');
+    }
+
     public function test_lookup_query_tampering_is_rejected_by_hmac_signature(): void
     {
         $project = Project::create([
