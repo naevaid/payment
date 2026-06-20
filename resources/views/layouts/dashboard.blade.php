@@ -144,5 +144,81 @@
                 </main>
             </div>
         </div>
+        <script>
+            (() => {
+                const copyText = async (value) => {
+                    if (navigator.clipboard && window.isSecureContext) {
+                        await navigator.clipboard.writeText(value);
+                        return;
+                    }
+
+                    const input = document.createElement('textarea');
+                    input.value = value;
+                    input.style.position = 'fixed';
+                    input.style.opacity = '0';
+                    document.body.appendChild(input);
+                    input.focus();
+                    input.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(input);
+                };
+
+                document.addEventListener('click', async (event) => {
+                    const toggleButton = event.target.closest('[data-secret-toggle]');
+
+                    if (toggleButton) {
+                        const targetId = toggleButton.getAttribute('data-secret-toggle');
+                        const secretValue = document.querySelector(`[data-secret-value="${targetId}"]`);
+
+                        if (!secretValue) {
+                            return;
+                        }
+
+                        const isMasked = secretValue.dataset.state !== 'full';
+
+                        secretValue.textContent = isMasked
+                            ? secretValue.dataset.full
+                            : secretValue.dataset.masked;
+
+                        secretValue.dataset.state = isMasked ? 'full' : 'masked';
+                        toggleButton.setAttribute('aria-label', isMasked ? 'Sembunyikan secret key' : 'Lihat secret key');
+                        toggleButton.setAttribute('title', isMasked ? 'Sembunyikan secret key' : 'Lihat secret key');
+                        toggleButton.querySelector('[data-icon-eye-open]')?.classList.toggle('is-hidden', !isMasked);
+                        toggleButton.querySelector('[data-icon-eye-closed]')?.classList.toggle('is-hidden', isMasked);
+
+                        return;
+                    }
+
+                    const copyButton = event.target.closest('[data-secret-copy]');
+
+                    if (!copyButton) {
+                        return;
+                    }
+
+                    const targetId = copyButton.getAttribute('data-secret-copy');
+                    const secretValue = document.querySelector(`[data-secret-value="${targetId}"]`);
+
+                    if (!secretValue) {
+                        return;
+                    }
+
+                    try {
+                        await copyText(secretValue.dataset.full ?? '');
+                        const feedback = copyButton.querySelector('[data-copy-feedback]');
+
+                        if (feedback) {
+                            const originalText = feedback.textContent;
+                            feedback.textContent = 'Tersalin';
+
+                            window.setTimeout(() => {
+                                feedback.textContent = originalText;
+                            }, 1200);
+                        }
+                    } catch (error) {
+                        console.error('Failed to copy secret key.', error);
+                    }
+                });
+            })();
+        </script>
     </body>
 </html>

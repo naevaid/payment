@@ -87,6 +87,12 @@ class DashboardManagementTest extends TestCase
 
         $this->assertNotSame($oldSecretKey, $project->secret_key);
         $secretKeyResponse->assertSessionHas('generated_credentials.secret_key', $project->secret_key);
+
+        $this->actingAs($user)
+            ->get(route('dashboard.projects.show', $project))
+            ->assertOk()
+            ->assertSee('aria-label="Lihat secret key"', false)
+            ->assertSee('aria-label="Salin secret key"', false);
     }
 
     public function test_authenticated_user_can_view_operational_dashboard_pages(): void

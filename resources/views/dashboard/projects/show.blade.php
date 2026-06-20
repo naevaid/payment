@@ -11,6 +11,20 @@
 @endsection
 
 @section('content')
+    @php
+        $maskSecret = static function (?string $value): string {
+            if (blank($value)) {
+                return '-';
+            }
+
+            $start = substr($value, 0, min(6, strlen($value)));
+            $end = strlen($value) > 10 ? substr($value, -4) : '';
+            $maskedLength = max(strlen($value) - strlen($start) - strlen($end), 6);
+
+            return $start.str_repeat('*', $maskedLength).$end;
+        };
+    @endphp
+
     @if (session('generated_credentials'))
         <section class="panel">
             <div class="panel-body">
@@ -32,7 +46,51 @@
                     @if (session('generated_credentials.secret_key'))
                         <div class="detail-item">
                             <strong>Secret key baru</strong>
-                            <span><code>{{ session('generated_credentials.secret_key') }}</code></span>
+                            <div class="secret-display">
+                                <code
+                                    class="secret-value"
+                                    data-secret-value="generated-secret-key"
+                                    data-state="masked"
+                                    data-masked="{{ $maskSecret(session('generated_credentials.secret_key')) }}"
+                                    data-full="{{ session('generated_credentials.secret_key') }}"
+                                >{{ $maskSecret(session('generated_credentials.secret_key')) }}</code>
+
+                                <div class="secret-actions">
+                                    <button
+                                        class="icon-button"
+                                        type="button"
+                                        data-secret-toggle="generated-secret-key"
+                                        aria-label="Lihat secret key"
+                                        title="Lihat secret key"
+                                    >
+                                        <svg data-icon-eye-open viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                        <svg class="is-hidden" data-icon-eye-closed viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M3 3l18 18"></path>
+                                            <path d="M10.6 10.7a3 3 0 0 0 4.2 4.2"></path>
+                                            <path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a18.1 18.1 0 0 1-4 4.7"></path>
+                                            <path d="M6.6 6.7C3.8 8.3 2 12 2 12a18.7 18.7 0 0 0 7.4 5.3"></path>
+                                        </svg>
+                                        <span class="sr-only">Lihat secret key</span>
+                                    </button>
+
+                                    <button
+                                        class="icon-button"
+                                        type="button"
+                                        data-secret-copy="generated-secret-key"
+                                        aria-label="Salin secret key"
+                                        title="Salin secret key"
+                                    >
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                        </svg>
+                                        <span class="sr-only" data-copy-feedback>Salin secret key</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     @endif
                 </div>
@@ -101,7 +159,51 @@
 
                     <div class="detail-item">
                         <strong>Secret key</strong>
-                        <span>{{ str_repeat('*', 16) }} (tersimpan terenkripsi)</span>
+                        <div class="secret-display">
+                            <code
+                                class="secret-value"
+                                data-secret-value="project-secret-key"
+                                data-state="masked"
+                                data-masked="{{ $maskSecret($project->secret_key) }}"
+                                data-full="{{ $project->secret_key }}"
+                            >{{ $maskSecret($project->secret_key) }}</code>
+
+                            <div class="secret-actions">
+                                <button
+                                    class="icon-button"
+                                    type="button"
+                                    data-secret-toggle="project-secret-key"
+                                    aria-label="Lihat secret key"
+                                    title="Lihat secret key"
+                                >
+                                    <svg data-icon-eye-open viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    <svg class="is-hidden" data-icon-eye-closed viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <path d="M3 3l18 18"></path>
+                                        <path d="M10.6 10.7a3 3 0 0 0 4.2 4.2"></path>
+                                        <path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a18.1 18.1 0 0 1-4 4.7"></path>
+                                        <path d="M6.6 6.7C3.8 8.3 2 12 2 12a18.7 18.7 0 0 0 7.4 5.3"></path>
+                                    </svg>
+                                    <span class="sr-only">Lihat secret key</span>
+                                </button>
+
+                                <button
+                                    class="icon-button"
+                                    type="button"
+                                    data-secret-copy="project-secret-key"
+                                    aria-label="Salin secret key"
+                                    title="Salin secret key"
+                                >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                        <rect x="9" y="9" width="13" height="13" rx="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    <span class="sr-only" data-copy-feedback>Salin secret key</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="detail-item">
