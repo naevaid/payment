@@ -53,6 +53,42 @@ class DashboardManagementTest extends TestCase
         $this->assertSame(['team' => 'finance', 'version' => 2], $project->metadata);
     }
 
+    public function test_authenticated_user_can_regenerate_project_credentials(): void
+    {
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'app_id' => 'APP-STATIC',
+            'project_name' => 'Credential Project',
+            'secret_key' => 'credential-project-secret-1234',
+            'default_callback_url' => 'https://credential.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $oldAppId = $project->app_id;
+        $oldSecretKey = $project->secret_key;
+
+        $appIdResponse = $this->actingAs($user)->post(route('dashboard.projects.regenerate-app-id', $project));
+
+        $appIdResponse->assertRedirect(route('dashboard.projects.show', $project));
+        $appIdResponse->assertSessionHas('generated_credentials.app_id');
+
+        $project->refresh();
+
+        $this->assertNotSame($oldAppId, $project->app_id);
+        $appIdResponse->assertSessionHas('generated_credentials.app_id', $project->app_id);
+
+        $secretKeyResponse = $this->actingAs($user)->post(route('dashboard.projects.regenerate-secret-key', $project));
+
+        $secretKeyResponse->assertRedirect(route('dashboard.projects.show', $project));
+        $secretKeyResponse->assertSessionHas('generated_credentials.secret_key');
+
+        $project->refresh();
+
+        $this->assertNotSame($oldSecretKey, $project->secret_key);
+        $secretKeyResponse->assertSessionHas('generated_credentials.secret_key', $project->secret_key);
+    }
+
     public function test_authenticated_user_can_view_operational_dashboard_pages(): void
     {
         $user = User::factory()->create();

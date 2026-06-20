@@ -56,7 +56,7 @@ class ProjectController extends Controller
         $validated = $this->validatedProject($request);
 
         $project = Project::create([
-            'app_id' => $validated['app_id'] ?: $this->generateAppId(),
+            'app_id' => $validated['app_id'] ?: $this->generateUniqueAppId(),
             'project_name' => $validated['project_name'],
             'secret_key' => $validated['secret_key'] ?: $this->generateSecretKey(),
             'default_callback_url' => $validated['default_callback_url'],
@@ -127,6 +127,38 @@ class ProjectController extends Controller
             ->with('status', 'Project / tenant berhasil dihapus.');
     }
 
+    public function regenerateAppId(Project $project): RedirectResponse
+    {
+        $newAppId = $this->generateUniqueAppId();
+
+        $project->update([
+            'app_id' => $newAppId,
+        ]);
+
+        return redirect()
+            ->route('dashboard.projects.show', $project)
+            ->with('status', 'App ID project berhasil diregenerasi.')
+            ->with('generated_credentials', [
+                'app_id' => $newAppId,
+            ]);
+    }
+
+    public function regenerateSecretKey(Project $project): RedirectResponse
+    {
+        $newSecretKey = $this->generateSecretKey();
+
+        $project->update([
+            'secret_key' => $newSecretKey,
+        ]);
+
+        return redirect()
+            ->route('dashboard.projects.show', $project)
+            ->with('status', 'Secret key project berhasil diregenerasi.')
+            ->with('generated_credentials', [
+                'secret_key' => $newSecretKey,
+            ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -172,6 +204,15 @@ class ProjectController extends Controller
     protected function generateAppId(): string
     {
         return 'APP-'.Str::upper(Str::random(12));
+    }
+
+    protected function generateUniqueAppId(): string
+    {
+        do {
+            $appId = $this->generateAppId();
+        } while (Project::where('app_id', $appId)->exists());
+
+        return $appId;
     }
 
     protected function generateSecretKey(): string

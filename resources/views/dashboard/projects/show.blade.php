@@ -11,6 +11,35 @@
 @endsection
 
 @section('content')
+    @if (session('generated_credentials'))
+        <section class="panel">
+            <div class="panel-body">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Kredensial baru</h2>
+                        <p>Nilai ini hanya ditampilkan sekali setelah regenerasi. Simpan segera ke client app tenant yang relevan.</p>
+                    </div>
+                </div>
+
+                <div class="detail-grid">
+                    @if (session('generated_credentials.app_id'))
+                        <div class="detail-item">
+                            <strong>App ID baru</strong>
+                            <span><code>{{ session('generated_credentials.app_id') }}</code></span>
+                        </div>
+                    @endif
+
+                    @if (session('generated_credentials.secret_key'))
+                        <div class="detail-item">
+                            <strong>Secret key baru</strong>
+                            <span><code>{{ session('generated_credentials.secret_key') }}</code></span>
+                        </div>
+                    @endif
+                </div>
+            </div>
+        </section>
+    @endif
+
     <section class="grid grid-4">
         <div class="stat-card">
             <span class="label">App ID</span>
@@ -44,6 +73,18 @@
                     <div>
                         <h2>Identitas integrasi</h2>
                         <p>Informasi inti tenant sesuai desain multi-tenant di PRD.</p>
+                    </div>
+
+                    <div class="button-row">
+                        <form class="inline-form" method="POST" action="{{ route('dashboard.projects.regenerate-app-id', $project) }}" onsubmit="return confirm('Regenerasi App ID project ini? Client app perlu diperbarui setelahnya.');">
+                            @csrf
+                            <button class="button" type="submit">Regenerate App ID</button>
+                        </form>
+
+                        <form class="inline-form" method="POST" action="{{ route('dashboard.projects.regenerate-secret-key', $project) }}" onsubmit="return confirm('Regenerasi secret key project ini? Client app perlu diperbarui setelahnya.');">
+                            @csrf
+                            <button class="button button-primary" type="submit">Regenerate Secret Key</button>
+                        </form>
                     </div>
                 </div>
 
