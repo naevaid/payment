@@ -8,7 +8,6 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 use Throwable;
@@ -58,9 +57,9 @@ class ProjectController extends Controller
         $validated = $this->validatedProject($request);
 
         $project = Project::create([
-            'app_id' => $validated['app_id'] ?: $this->generateUniqueAppId(),
+            'app_id' => $this->generateUniqueAppId(),
             'project_name' => $validated['project_name'],
-            'secret_key' => $validated['secret_key'] ?: $this->generateSecretKey(),
+            'secret_key' => $this->generateSecretKey(),
             'default_callback_url' => $validated['default_callback_url'],
             'is_active' => $request->boolean('is_active'),
             'metadata' => $validated['metadata'],
@@ -96,16 +95,11 @@ class ProjectController extends Controller
         $validated = $this->validatedProject($request, $project);
 
         $payload = [
-            'app_id' => $validated['app_id'] ?: $project->app_id,
             'project_name' => $validated['project_name'],
             'default_callback_url' => $validated['default_callback_url'],
             'is_active' => $request->boolean('is_active'),
             'metadata' => $validated['metadata'],
         ];
-
-        if ($validated['secret_key']) {
-            $payload['secret_key'] = $validated['secret_key'];
-        }
 
         $project->update($payload);
 
@@ -243,9 +237,7 @@ class ProjectController extends Controller
     protected function validatedProject(Request $request, ?Project $project = null): array
     {
         $validated = $request->validate([
-            'app_id' => ['nullable', 'string', 'max:255', Rule::unique('projects', 'app_id')->ignore($project?->id)],
             'project_name' => ['required', 'string', 'max:255'],
-            'secret_key' => ['nullable', 'string', 'min:16', 'max:255'],
             'default_callback_url' => ['nullable', 'url', 'max:2048'],
             'metadata_json' => ['nullable', 'string'],
         ]);
@@ -271,9 +263,7 @@ class ProjectController extends Controller
         }
 
         return [
-            'app_id' => $validated['app_id'] ?? null,
             'project_name' => $validated['project_name'],
-            'secret_key' => $validated['secret_key'] ?? null,
             'default_callback_url' => $validated['default_callback_url'] ?? null,
             'metadata' => $metadata,
         ];

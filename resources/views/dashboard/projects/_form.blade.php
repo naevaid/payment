@@ -13,22 +13,13 @@
     </div>
 
     <div class="field">
-        <label for="app_id">App ID</label>
-        <input class="input" id="app_id" type="text" name="app_id" value="{{ old('app_id', $project->app_id) }}" placeholder="Kosongkan untuk generate otomatis">
-    </div>
-</div>
-
-<div class="grid grid-2">
-    <div class="field">
-        <label for="secret_key">Secret key</label>
-        <input class="input" id="secret_key" type="text" name="secret_key" value="" placeholder="{{ $project->exists ? 'Kosongkan jika tidak ingin mengganti secret key' : 'Kosongkan untuk generate otomatis' }}">
-    </div>
-
-    <div class="field">
         <label for="default_callback_url">Default callback URL</label>
         <input class="input" id="default_callback_url" type="url" name="default_callback_url" value="{{ old('default_callback_url', $project->default_callback_url) }}" placeholder="https://project.naeva.id/payment/callback">
     </div>
 </div>
+
+<input id="app_id" type="hidden" value="{{ $project->app_id }}">
+<input id="secret_key" type="hidden" value="{{ $project->secret_key }}">
 
 @if ($project->exists)
     <div class="field">

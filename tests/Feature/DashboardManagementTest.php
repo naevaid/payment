@@ -27,12 +27,14 @@ class DashboardManagementTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard.projects.create'))
             ->assertOk()
-            ->assertDontSee('Metadata JSON');
+            ->assertDontSee('Metadata JSON')
+            ->assertDontSee('<label for="app_id">', false)
+            ->assertDontSee('<label for="secret_key">', false)
+            ->assertDontSee('type="text" name="app_id"', false)
+            ->assertDontSee('type="text" name="secret_key"', false);
 
         $createResponse = $this->actingAs($user)->post(route('dashboard.projects.store'), [
             'project_name' => 'Billing Internal',
-            'app_id' => 'APP-BILLING',
-            'secret_key' => 'secret-key-billing-1234',
             'default_callback_url' => 'https://billing.naeva.id/payment/callback',
             'is_active' => '1',
             'metadata_json' => '{"team":"finance"}',
@@ -43,12 +45,19 @@ class DashboardManagementTest extends TestCase
         $createResponse->assertRedirect(route('dashboard.projects.show', $project));
         $this->assertSame('Billing Internal', $project->project_name);
         $this->assertTrue($project->is_active);
+        $this->assertStringStartsWith('APP-', $project->app_id);
+        $this->assertNotEmpty($project->secret_key);
+        $this->assertGreaterThanOrEqual(16, strlen($project->secret_key));
+
+        $originalAppId = $project->app_id;
+        $originalSecretKey = $project->secret_key;
 
         $updateResponse = $this->actingAs($user)->put(route('dashboard.projects.update', $project), [
             'project_name' => 'Billing Internal Updated',
-            'app_id' => 'APP-BILLING',
+            'app_id' => 'APP-MANUAL-OVERRIDE',
             'default_callback_url' => 'https://billing.naeva.id/payment/callback-v2',
             'metadata_json' => '{"team":"finance","version":2}',
+            'secret_key' => 'manual-override-secret-key-1234',
         ]);
 
         $updateResponse->assertRedirect(route('dashboard.projects.show', $project));
@@ -58,11 +67,17 @@ class DashboardManagementTest extends TestCase
         $this->assertSame('Billing Internal Updated', $project->project_name);
         $this->assertSame('https://billing.naeva.id/payment/callback-v2', $project->default_callback_url);
         $this->assertSame(['team' => 'finance', 'version' => 2], $project->metadata);
+        $this->assertSame($originalAppId, $project->app_id);
+        $this->assertSame($originalSecretKey, $project->secret_key);
 
         $this->actingAs($user)
             ->get(route('dashboard.projects.edit', $project))
             ->assertOk()
-            ->assertDontSee('Metadata JSON');
+            ->assertDontSee('Metadata JSON')
+            ->assertDontSee('<label for="app_id">', false)
+            ->assertDontSee('<label for="secret_key">', false)
+            ->assertDontSee('type="text" name="app_id"', false)
+            ->assertDontSee('type="text" name="secret_key"', false);
     }
 
     public function test_authenticated_user_can_regenerate_project_credentials(): void

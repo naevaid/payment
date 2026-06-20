@@ -3,7 +3,7 @@
 @section('title', 'Edit Project')
 @section('eyebrow', 'Projects / Tenants')
 @section('page-title', 'Edit project / tenant')
-@section('page-subtitle', 'Perbarui identitas tenant, callback URL, metadata, dan status aktif. Secret key hanya diganti bila Anda mengisi nilai baru.')
+@section('page-subtitle', 'Perbarui nama project, callback URL, dan status aktif. App ID serta secret key dikelola sistem dan dapat diregenerasi dari halaman detail project.')
 
 @section('page-actions')
     <a class="button" href="{{ route('dashboard.projects.show', $project) }}">Lihat detail</a>

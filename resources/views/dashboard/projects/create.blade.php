@@ -3,7 +3,7 @@
 @section('title', 'Tambah Project')
 @section('eyebrow', 'Projects / Tenants')
 @section('page-title', 'Tambah project / tenant baru')
-@section('page-subtitle', 'Project baru akan mendapatkan `app_id` dan `secret_key` untuk autentikasi ke charge API. Nilai ini bisa digenerate otomatis bila tidak diisi manual.')
+@section('page-subtitle', 'Project baru akan otomatis mendapatkan `app_id` dan `secret_key` untuk autentikasi ke charge API. Jika diperlukan, nilainya tetap bisa diregenerasi dari halaman detail project.')
 
 @section('content')
     <section class="panel">
