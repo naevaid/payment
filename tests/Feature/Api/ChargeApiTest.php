@@ -3,6 +3,9 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Project;
+use App\Models\CallbackForwardingLog;
+use App\Models\MidtransWebhookLog;
+use App\Models\Transaction;
 use App\Support\ProjectRequestSignature;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -329,7 +332,7 @@ class ChargeApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        $transaction = \App\Models\Transaction::create([
+        $transaction = Transaction::create([
             'project_id' => $project->id,
             'gateway_order_id' => 'PROJECTLOOKUP-01JABC1234567890',
             'client_order_id' => 'INV-LOOKUP-001',
@@ -340,6 +343,45 @@ class ChargeApiTest extends TestCase
             'callback_url' => 'https://project-lookup.test/api/payment/callback',
             'payment_type' => 'bank_transfer',
             'snap_redirect_url' => 'https://midtrans.test/snap/lookup-001',
+            'metadata' => [
+                'invoice_id' => 7001,
+            ],
+            'customer_details' => [
+                'first_name' => 'Lookup User',
+                'email' => 'lookup@example.com',
+            ],
+            'last_webhook_at' => now()->subMinute(),
+        ]);
+
+        MidtransWebhookLog::create([
+            'transaction_id' => $transaction->id,
+            'order_id' => $transaction->gateway_order_id,
+            'midtrans_transaction_id' => 'midtrans-lookup-001',
+            'transaction_status' => 'pending',
+            'signature_key' => 'valid-signature',
+            'payload' => ['transaction_status' => 'pending'],
+            'headers' => ['content-type' => 'application/json'],
+            'is_signature_valid' => true,
+            'processing_status' => 'processed',
+            'received_at' => now()->subMinute(),
+            'processed_at' => now()->subMinute(),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $transaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://project-lookup.test/api/payment/callback',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['transaction_status' => 'pending'],
+            'request_headers' => ['X-Payment-App-Id' => $project->app_id],
+            'response_status_code' => 500,
+            'response_body' => 'temporary error',
+            'success' => false,
+            'error_message' => 'HTTP 500',
+            'next_retry_at' => now()->addMinute(),
+            'dispatched_at' => now()->subSeconds(30),
+            'responded_at' => now()->subSeconds(29),
         ]);
 
         $timestamp = (string) now()->timestamp;
@@ -358,7 +400,15 @@ class ChargeApiTest extends TestCase
             ->assertJsonPath('data.gateway_order_id', $transaction->gateway_order_id)
             ->assertJsonPath('data.order_id', 'INV-LOOKUP-001')
             ->assertJsonPath('data.callback_status', 'queued')
-            ->assertJsonPath('data.redirect_url', 'https://midtrans.test/snap/lookup-001');
+            ->assertJsonPath('data.redirect_url', 'https://midtrans.test/snap/lookup-001')
+            ->assertJsonPath('data.callback_url', 'https://project-lookup.test/api/payment/callback')
+            ->assertJsonPath('data.metadata.invoice_id', 7001)
+            ->assertJsonPath('data.customer_details.first_name', 'Lookup User')
+            ->assertJsonPath('data.latest_webhook.processing_status', 'processed')
+            ->assertJsonPath('data.latest_webhook.is_signature_valid', true)
+            ->assertJsonPath('data.latest_callback.attempt', 1)
+            ->assertJsonPath('data.latest_callback.success', false)
+            ->assertJsonPath('data.latest_callback.response_status_code', 500);
     }
 
     public function test_project_can_lookup_transaction_with_auto_identifier_mode(): void
@@ -371,7 +421,7 @@ class ChargeApiTest extends TestCase
             'is_active' => true,
         ]);
 
-        \App\Models\Transaction::create([
+        Transaction::create([
             'project_id' => $project->id,
             'gateway_order_id' => 'PROJECTAUTO-01JABC1234567890',
             'client_order_id' => 'INV-AUTO-001',
@@ -400,6 +450,92 @@ class ChargeApiTest extends TestCase
             ->assertJsonPath('data.status', 'settlement')
             ->assertJsonPath('data.callback_status', 'success')
             ->assertJsonPath('data.payment_type', 'qris');
+    }
+
+    public function test_project_can_get_transaction_detail_by_gateway_order_id_with_operational_summary(): void
+    {
+        $project = Project::create([
+            'app_id' => 'project_detail_prod',
+            'project_name' => 'Project Detail',
+            'secret_key' => 'secret-detail-123',
+            'default_callback_url' => 'https://project-detail.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $transaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'PROJECTDETAIL-01JABC1234567890',
+            'client_order_id' => 'INV-DETAIL-001',
+            'amount' => 455000,
+            'currency' => 'IDR',
+            'status' => 'settlement',
+            'callback_status' => 'success',
+            'callback_url' => 'https://project-detail.test/api/payment/callback',
+            'payment_type' => 'bank_transfer',
+            'snap_redirect_url' => 'https://midtrans.test/snap/detail-001',
+            'metadata' => [
+                'subscription_id' => 88,
+            ],
+            'customer_details' => [
+                'first_name' => 'Detail User',
+            ],
+            'paid_at' => now()->subMinutes(5),
+            'last_webhook_at' => now()->subMinutes(5),
+        ]);
+
+        MidtransWebhookLog::create([
+            'transaction_id' => $transaction->id,
+            'order_id' => $transaction->gateway_order_id,
+            'midtrans_transaction_id' => 'midtrans-detail-001',
+            'transaction_status' => 'settlement',
+            'signature_key' => 'valid-signature',
+            'payload' => ['transaction_status' => 'settlement'],
+            'headers' => ['content-type' => 'application/json'],
+            'is_signature_valid' => true,
+            'processing_status' => 'processed',
+            'received_at' => now()->subMinutes(5),
+            'processed_at' => now()->subMinutes(5),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $transaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://project-detail.test/api/payment/callback',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['transaction_status' => 'settlement'],
+            'request_headers' => ['X-Payment-App-Id' => $project->app_id],
+            'response_status_code' => 200,
+            'response_body' => 'ok',
+            'success' => true,
+            'error_message' => null,
+            'next_retry_at' => null,
+            'dispatched_at' => now()->subMinutes(5),
+            'responded_at' => now()->subMinutes(5),
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/transactions/PROJECTDETAIL-01JABC1234567890',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get(
+            '/api/v1/transactions/PROJECTDETAIL-01JABC1234567890',
+            $headers,
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.gateway_order_id', 'PROJECTDETAIL-01JABC1234567890')
+            ->assertJsonPath('data.order_id', 'INV-DETAIL-001')
+            ->assertJsonPath('data.status', 'settlement')
+            ->assertJsonPath('data.callback_status', 'success')
+            ->assertJsonPath('data.latest_webhook.status', 'settlement')
+            ->assertJsonPath('data.latest_callback.success', true)
+            ->assertJsonPath('data.latest_callback.response_status_code', 200)
+            ->assertJsonPath('data.metadata.subscription_id', 88)
+            ->assertJsonPath('data.customer_details.first_name', 'Detail User');
     }
 
     public function test_lookup_query_tampering_is_rejected_by_hmac_signature(): void
