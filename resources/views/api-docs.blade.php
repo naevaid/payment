@@ -498,7 +498,21 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                             <h2>GET /projects/me</h2>
                             <p>Dipakai untuk memverifikasi identitas project yang sedang terhubung sekaligus membaca readiness integrasi tenant.</p>
 
-                            <h3>Response 200</h3>
+                            <h3>Header request</h3>
+                            <pre class="code-block"><code>X-App-ID: project_a_prod
+X-Timestamp: 1760832000
+X-Payment-Signature: &lt;hmac_signature&gt;
+Accept: application/json</code></pre>
+
+                            <h3>Contoh request cURL</h3>
+                            <pre class="code-block"><code>curl --request GET \
+  --url https://payment.naeva.id/api/v1/projects/me \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: &lt;signature&gt;"</code></pre>
+
+                            <h3>Example response 200</h3>
                             <pre class="code-block"><code>{
   "data": {
     "app_id": "project_a_prod",
@@ -587,7 +601,14 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                             <h2>POST /charge</h2>
                             <p>Endpoint utama untuk membuat transaksi baru dan mendapatkan token Snap Midtrans.</p>
 
-                            <h3>Request body</h3>
+                            <h3>Header request</h3>
+                            <pre class="code-block"><code>X-App-ID: project_a_prod
+X-Timestamp: 1760832000
+X-Payment-Signature: &lt;hmac_signature&gt;
+Content-Type: application/json
+Accept: application/json</code></pre>
+
+                            <h3>Example request body</h3>
                             <pre class="code-block"><code>{
   "order_id": "INV-PROJECTA-2026-001",
   "gross_amount": 150000,
@@ -613,7 +634,40 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
   }
 }</code></pre>
 
-                            <h3>Response 201</h3>
+                            <h3>Contoh request cURL</h3>
+                            <pre class="code-block"><code>curl --request POST \
+  --url https://payment.naeva.id/api/v1/charge \
+  --header "Accept: application/json" \
+  --header "Content-Type: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: &lt;signature&gt;" \
+  --data '{
+    "order_id": "INV-PROJECTA-2026-001",
+    "gross_amount": 150000,
+    "currency": "IDR",
+    "customer_details": {
+      "first_name": "Budi",
+      "last_name": "Santoso",
+      "email": "budi@example.com",
+      "phone": "081234567890"
+    },
+    "item_details": [
+      {
+        "id": "SKU-INV-001",
+        "price": 150000,
+        "quantity": 1,
+        "name": "Invoice Payment"
+      }
+    ],
+    "custom_callback_url": "https://client-app.example.com/api/payment/notification",
+    "metadata": {
+      "invoice_id": 1001,
+      "source": "project-a"
+    }
+  }'</code></pre>
+
+                            <h3>Example response 201</h3>
                             <pre class="code-block"><code>{
   "status": "success",
   "project": {
@@ -640,7 +694,27 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                             <h2>GET /transactions/lookup</h2>
                             <p>Dipakai untuk mencari transaksi memakai <code class="inline-code">client_order_id</code>, <code class="inline-code">gateway_order_id</code>, atau mode <code class="inline-code">auto</code>.</p>
 
-                            <h3>Response 200</h3>
+                            <h3>Header request</h3>
+                            <pre class="code-block"><code>X-App-ID: project_a_prod
+X-Timestamp: 1760832000
+X-Payment-Signature: &lt;hmac_signature&gt;
+Accept: application/json</code></pre>
+
+                            <h3>Query parameter</h3>
+                            <ul>
+                                <li><code class="inline-code">identifier</code> wajib, nilai yang ingin dicari.</li>
+                                <li><code class="inline-code">by</code> opsional, nilai <code class="inline-code">auto</code>, <code class="inline-code">gateway_order_id</code>, atau <code class="inline-code">client_order_id</code>.</li>
+                            </ul>
+
+                            <h3>Contoh request cURL</h3>
+                            <pre class="code-block"><code>curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/lookup?identifier=INV-LOOKUP-001&amp;by=client_order_id" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: &lt;signature&gt;"</code></pre>
+
+                            <h3>Example response 200</h3>
                             <pre class="code-block"><code>{
   "data": {
     "gateway_order_id": "PROJECTLOOKUP-01JABC1234567890",
@@ -699,7 +773,26 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                             <h2>GET /transactions/{gateway_order_id}</h2>
                             <p>Dipakai untuk mengambil detail transaksi lengkap berdasarkan gateway order id yang dibuat oleh layanan payment.</p>
 
-                            <h3>Response 200</h3>
+                            <h3>Header request</h3>
+                            <pre class="code-block"><code>X-App-ID: project_a_prod
+X-Timestamp: 1760832000
+X-Payment-Signature: &lt;hmac_signature&gt;
+Accept: application/json</code></pre>
+
+                            <h3>Parameter path</h3>
+                            <ul>
+                                <li><code class="inline-code">gateway_order_id</code> wajib, ID transaksi internal yang dikembalikan saat endpoint <code class="inline-code">POST /charge</code> berhasil.</li>
+                            </ul>
+
+                            <h3>Contoh request cURL</h3>
+                            <pre class="code-block"><code>curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: &lt;signature&gt;"</code></pre>
+
+                            <h3>Example response 200</h3>
                             <pre class="code-block"><code>{
   "data": {
     "gateway_order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
@@ -751,7 +844,26 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                             <h2>GET /transactions/{gateway_order_id}/callback-history</h2>
                             <p>Dipakai untuk audit seluruh riwayat delivery callback per transaksi, termasuk retry terbaru.</p>
 
-                            <h3>Response 200</h3>
+                            <h3>Header request</h3>
+                            <pre class="code-block"><code>X-App-ID: project_a_prod
+X-Timestamp: 1760832000
+X-Payment-Signature: &lt;hmac_signature&gt;
+Accept: application/json</code></pre>
+
+                            <h3>Query parameter</h3>
+                            <ul>
+                                <li><code class="inline-code">limit</code> opsional, integer 1-20, default <code class="inline-code">5</code>.</li>
+                            </ul>
+
+                            <h3>Contoh request cURL</h3>
+                            <pre class="code-block"><code>curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45/callback-history?limit=5" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: &lt;signature&gt;"</code></pre>
+
+                            <h3>Example response 200</h3>
                             <pre class="code-block"><code>{
   "data": {
     "gateway_order_id": "PROJECTHISTORY-01JABC1234567890",
@@ -802,23 +914,40 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                                 <code class="inline-code">Finish Redirect URL = https://payment.naeva.id/midtrans/finish</code>.
                             </div>
 
-                            <h3>Response invalid signature</h3>
+                            <h3>Contoh payload webhook dari Midtrans</h3>
+                            <pre class="code-block"><code>{
+  "transaction_time": "2026-06-20 14:15:13",
+  "transaction_status": "settlement",
+  "transaction_id": "513f1f01-c9da-474c-9fc9-d5c64364b709",
+  "status_message": "midtrans payment notification",
+  "status_code": "200",
+  "signature_key": "&lt;midtrans_signature&gt;",
+  "settlement_time": "2026-06-20 14:16:13",
+  "payment_type": "gopay",
+  "order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
+  "merchant_id": "M351033033",
+  "gross_amount": "150000.00",
+  "fraud_status": "accept",
+  "currency": "IDR"
+}</code></pre>
+
+                            <h3>Example response invalid signature</h3>
                             <pre class="code-block"><code>{
   "message": "Invalid signature."
 }</code></pre>
 
-                            <h3>Response reachability check</h3>
+                            <h3>Example response reachability check</h3>
                             <pre class="code-block"><code>{
   "ok": true,
   "message": "Midtrans notification endpoint is reachable."
 }</code></pre>
 
-                            <h3>Response accepted</h3>
+                            <h3>Example response accepted</h3>
                             <pre class="code-block"><code>{
   "status": "accepted"
 }</code></pre>
 
-                            <h3>Response ignored test notification</h3>
+                            <h3>Example response ignored test notification</h3>
                             <pre class="code-block"><code>{
   "ok": true,
   "message": "Midtrans notification endpoint is reachable.",
@@ -833,6 +962,9 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                                 mengirim callback ke <code class="inline-code">custom_callback_url</code> atau
                                 <code class="inline-code">default_callback_url</code> project.
                             </p>
+
+                            <h3>Example request method dan target</h3>
+                            <pre class="code-block"><code>POST https://client-app.example.com/api/payment/callback</code></pre>
 
                             <h3>Header callback</h3>
                             <pre class="code-block"><code>User-Agent: Naeva-Payment-Callback/1.0
@@ -857,6 +989,12 @@ Accept: application/json</code></pre>
     "invoice_id": 1001,
     "source": "project-a"
   }
+}</code></pre>
+
+                            <h3>Example response dari endpoint project</h3>
+                            <pre class="code-block"><code>{
+  "received": true,
+  "message": "Callback diterima."
 }</code></pre>
 
                             <div class="success-box">

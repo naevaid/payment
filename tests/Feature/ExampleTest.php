@@ -34,7 +34,11 @@ class ExampleTest extends TestCase
             ->assertSee('GET /transactions/{gateway_order_id}/callback-history')
             ->assertSee('/api/v1/callback/midtrans')
             ->assertSee('/midtrans/finish')
-            ->assertSee('Callback Forwarding ke Project Asal');
+            ->assertSee('Callback Forwarding ke Project Asal')
+            ->assertSee('Contoh request cURL')
+            ->assertSee('Example request body')
+            ->assertSee('Example response dari endpoint project')
+            ->assertSee('Contoh payload webhook dari Midtrans');
     }
 
     public function test_the_midtrans_finish_redirect_page_is_accessible(): void

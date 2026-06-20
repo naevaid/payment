@@ -172,7 +172,18 @@ X-Payment-Signature: <hmac_signature>
 Accept: application/json
 ```
 
-#### Response 200
+#### Contoh Request cURL
+
+```bash
+curl --request GET \
+  --url https://payment.naeva.id/api/v1/projects/me \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: <signature>"
+```
+
+#### Example Response 200
 
 ```json
 {
@@ -304,6 +315,42 @@ Accept: application/json
 }
 ```
 
+#### Contoh Request cURL
+
+```bash
+curl --request POST \
+  --url https://payment.naeva.id/api/v1/charge \
+  --header "Accept: application/json" \
+  --header "Content-Type: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: <signature>" \
+  --data '{
+    "order_id": "INV-PROJECTA-2026-001",
+    "gross_amount": 150000,
+    "currency": "IDR",
+    "customer_details": {
+      "first_name": "Budi",
+      "last_name": "Santoso",
+      "email": "budi@example.com",
+      "phone": "081234567890"
+    },
+    "item_details": [
+      {
+        "id": "SKU-INV-001",
+        "price": 150000,
+        "quantity": 1,
+        "name": "Invoice Payment"
+      }
+    ],
+    "custom_callback_url": "https://client-app.example.com/api/payment/notification",
+    "metadata": {
+      "invoice_id": 1001,
+      "source": "project-a"
+    }
+  }'
+```
+
 #### Field Request
 
 - `order_id`: wajib, ID order dari client app
@@ -362,7 +409,18 @@ Contoh:
 /api/v1/transactions/lookup?identifier=INV-LOOKUP-001&by=client_order_id
 ```
 
-#### Response 200
+#### Contoh Request cURL
+
+```bash
+curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/lookup?identifier=INV-LOOKUP-001&by=client_order_id" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: <signature>"
+```
+
+#### Example Response 200
 
 ```json
 {
@@ -428,7 +486,22 @@ X-Payment-Signature: <hmac_signature>
 Accept: application/json
 ```
 
-#### Response 200
+#### Path Parameter
+
+- `gateway_order_id`: wajib, ID transaksi internal yang dikembalikan saat `POST /charge` berhasil
+
+#### Contoh Request cURL
+
+```bash
+curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: <signature>"
+```
+
+#### Example Response 200
 
 ```json
 {
@@ -493,7 +566,18 @@ Accept: application/json
 
 - `limit`: opsional, integer, minimal `1`, maksimal `20`, default `5`
 
-#### Response 200
+#### Contoh Request cURL
+
+```bash
+curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45/callback-history?limit=5" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: <signature>"
+```
+
+#### Example Response 200
 
 ```json
 {
@@ -572,7 +656,27 @@ Perilaku:
 
 Untuk kompatibilitas test URL notifikasi Midtrans, request `POST` dari `Veritrans` yang bersifat ping/reachability check atau memakai dummy `order_id` yang tidak dikenal juga akan dibalas `200` agar konfigurasi Midtrans dapat disimpan tanpa mengganggu transaksi internal.
 
-### Response Jika Signature Invalid
+### Contoh Payload Webhook
+
+```json
+{
+  "transaction_time": "2026-06-20 14:15:13",
+  "transaction_status": "settlement",
+  "transaction_id": "513f1f01-c9da-474c-9fc9-d5c64364b709",
+  "status_message": "midtrans payment notification",
+  "status_code": "200",
+  "signature_key": "<midtrans_signature>",
+  "settlement_time": "2026-06-20 14:16:13",
+  "payment_type": "gopay",
+  "order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
+  "merchant_id": "M351033033",
+  "gross_amount": "150000.00",
+  "fraud_status": "accept",
+  "currency": "IDR"
+}
+```
+
+### Example Response Jika Signature Invalid
 
 ```json
 {
@@ -582,7 +686,7 @@ Untuk kompatibilitas test URL notifikasi Midtrans, request `POST` dari `Veritran
 
 Status: `403`
 
-### Response Reachability Check
+### Example Response Reachability Check
 
 ```json
 {
@@ -593,7 +697,7 @@ Status: `403`
 
 Status: `200`
 
-### Response Ignored Test Notification
+### Example Response Ignored Test Notification
 
 ```json
 {
@@ -605,7 +709,7 @@ Status: `200`
 
 Status: `200`
 
-### Response Accepted
+### Example Response Accepted
 
 ```json
 {
@@ -636,6 +740,12 @@ Content-Type: application/json
 Accept: application/json
 ```
 
+### Example Request Callback
+
+```text
+POST https://client-app.example.com/api/payment/callback
+```
+
 ### Payload Callback
 
 ```json
@@ -650,6 +760,15 @@ Accept: application/json
     "invoice_id": 1001,
     "source": "project-a"
   }
+}
+```
+
+### Example Response dari Client App
+
+```json
+{
+  "received": true,
+  "message": "Callback diterima."
 }
 ```
 
