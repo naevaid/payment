@@ -9,6 +9,8 @@ use App\Http\Controllers\Dashboard\ProjectController;
 use App\Http\Controllers\Dashboard\TransactionController;
 use App\Http\Controllers\Dashboard\WebhookLogController;
 use App\Http\Controllers\DashboardController;
+use App\Models\Transaction;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -16,7 +18,29 @@ Route::get('/', function () {
 })->name('home');
 
 Route::view('/docs/api', 'api-docs')->name('docs.api');
-Route::view('/midtrans/finish', 'midtrans-finish')->name('midtrans.finish');
+Route::get('/midtrans/finish', function (Request $request) {
+    $orderId = (string) $request->query('order_id', '');
+
+    $transaction = filled($orderId)
+        ? Transaction::query()
+            ->with('project')
+            ->where(function ($query) use ($orderId): void {
+                $query
+                    ->where('gateway_order_id', $orderId)
+                    ->orWhere('client_order_id', $orderId);
+            })
+            ->first()
+        : null;
+
+    return view('midtrans-finish', [
+        'transaction' => $transaction,
+        'midtransStatus' => (string) $request->query('transaction_status', ''),
+        'statusCode' => (string) $request->query('status_code', ''),
+        'paymentType' => (string) $request->query('payment_type', ''),
+        'fraudStatus' => (string) $request->query('fraud_status', ''),
+        'orderId' => $orderId,
+    ]);
+})->name('midtrans.finish');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');

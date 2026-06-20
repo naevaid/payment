@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Payment Finish Redirect - {{ config('app.name', 'payment') }}</title>
+        <title>Status Transaksi - {{ config('app.name', 'payment') }}</title>
         <style>
             :root {
                 color-scheme: light;
@@ -138,30 +138,99 @@
     </head>
     <body>
         <main class="card">
-            <span class="eyebrow">Midtrans Redirect</span>
-            <h1>Pembayaran selesai di Midtrans</h1>
+            <span class="eyebrow">Status Pembayaran</span>
+            <h1>Status transaksi</h1>
             <p>
-                Halaman ini dipakai sebagai finish redirect dari Midtrans. Status akhir pembayaran tetap diproses
-                melalui notifikasi server-to-server dan callback ke project asal.
+                Halaman ini dipakai sebagai landing page setelah customer menyelesaikan alur pembayaran. Status akhir pembayaran tetap
+                dipastikan melalui notifikasi server-to-server dan sinkronisasi transaksi di service ini.
             </p>
 
             <div class="notice">
-                Customer boleh ditampilkan kembali ke aplikasi asal setelah halaman ini terbuka. Untuk status pembayaran yang
-                akurat, gunakan webhook Midtrans dan callback forwarding dari service ini.
+                Halaman ini sengaja dibuat fleksibel agar bisa menampilkan ringkasan status, detail transaksi lokal, dan informasi
+                yang dibawa oleh redirect pembayaran dalam satu tampilan.
             </div>
 
             <div class="meta">
-                @if (request('order_id'))
+                @if ($transaction)
                     <div class="meta-item">
-                        <strong>Order ID</strong>
-                        <code>{{ request('order_id') }}</code>
+                        <strong>Gateway Order ID</strong>
+                        <code>{{ $transaction->gateway_order_id }}</code>
                     </div>
                 @endif
 
-                @if (request('transaction_status'))
+                @if ($transaction?->client_order_id)
                     <div class="meta-item">
-                        <strong>Transaction Status</strong>
-                        <code>{{ request('transaction_status') }}</code>
+                        <strong>Order ID Tenant</strong>
+                        <code>{{ $transaction->client_order_id }}</code>
+                    </div>
+                @endif
+
+                @if ($transaction)
+                    <div class="meta-item">
+                        <strong>Status Internal</strong>
+                        <code>{{ $transaction->status->value }}</code>
+                    </div>
+
+                    <div class="meta-item">
+                        <strong>Status Callback</strong>
+                        <code>{{ $transaction->callback_status->value }}</code>
+                    </div>
+
+                    <div class="meta-item">
+                        <strong>Nominal</strong>
+                        <code>Rp {{ number_format($transaction->amount, 0, ',', '.') }} {{ $transaction->currency }}</code>
+                    </div>
+
+                    <div class="meta-item">
+                        <strong>Project</strong>
+                        <code>{{ $transaction->project?->project_name ?? '-' }} ({{ $transaction->project?->app_id ?? '-' }})</code>
+                    </div>
+
+                    <div class="meta-item">
+                        <strong>Terakhir Diperbarui</strong>
+                        <code>{{ $transaction->updated_at?->format('d M Y H:i:s') ?? '-' }}</code>
+                    </div>
+                @endif
+
+                @if ($orderId !== '')
+                    <div class="meta-item">
+                        <strong>Order ID dari Redirect</strong>
+                        <code>{{ $orderId }}</code>
+                    </div>
+                @endif
+
+                @if ($midtransStatus !== '')
+                    <div class="meta-item">
+                        <strong>Status dari Midtrans</strong>
+                        <code>{{ $midtransStatus }}</code>
+                    </div>
+                @endif
+
+                @if ($statusCode !== '')
+                    <div class="meta-item">
+                        <strong>Status Code</strong>
+                        <code>{{ $statusCode }}</code>
+                    </div>
+                @endif
+
+                @if ($paymentType !== '')
+                    <div class="meta-item">
+                        <strong>Payment Type</strong>
+                        <code>{{ $paymentType }}</code>
+                    </div>
+                @endif
+
+                @if ($fraudStatus !== '')
+                    <div class="meta-item">
+                        <strong>Fraud Status</strong>
+                        <code>{{ $fraudStatus }}</code>
+                    </div>
+                @endif
+
+                @if (! $transaction)
+                    <div class="meta-item">
+                        <strong>Status Halaman</strong>
+                        <code>Detail transaksi lokal belum ditemukan. Halaman tetap dapat dipakai untuk menampilkan status dari parameter redirect.</code>
                     </div>
                 @endif
 

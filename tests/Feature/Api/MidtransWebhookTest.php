@@ -82,6 +82,15 @@ class MidtransWebhookTest extends TestCase
         });
     }
 
+    public function test_midtrans_notification_endpoint_is_reachable_for_url_check(): void
+    {
+        $response = $this->getJson('/api/v1/callback/midtrans');
+
+        $response->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('message', 'Midtrans notification endpoint is reachable.');
+    }
+
     public function test_duplicate_midtrans_webhook_is_accepted_without_dispatching_duplicate_callback_job(): void
     {
         Queue::fake();

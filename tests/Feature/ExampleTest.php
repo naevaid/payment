@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
-// use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\Project;
+use App\Models\Transaction;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
+    use RefreshDatabase;
+
     public function test_the_home_page_displays_public_navigation(): void
     {
         $response = $this->get('/');
@@ -35,12 +39,32 @@ class ExampleTest extends TestCase
 
     public function test_the_midtrans_finish_redirect_page_is_accessible(): void
     {
+        $project = Project::create([
+            'app_id' => 'APP-FINISH',
+            'project_name' => 'Finish Project',
+            'secret_key' => 'finish-project-secret-1234',
+            'default_callback_url' => 'https://finish.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-FINISH-001',
+            'client_order_id' => 'INV-001',
+            'amount' => 150000,
+            'currency' => 'IDR',
+            'status' => 'settlement',
+            'callback_status' => 'success',
+            'callback_url' => 'https://finish.naeva.id/payment/callback',
+        ]);
+
         $response = $this->get('/midtrans/finish?order_id=INV-001&transaction_status=settlement');
 
         $response->assertOk()
-            ->assertSee('Pembayaran selesai di Midtrans')
+            ->assertSee('Status transaksi')
             ->assertSee('INV-001')
             ->assertSee('settlement')
+            ->assertSee('Finish Project')
             ->assertSee('/midtrans/finish');
     }
 

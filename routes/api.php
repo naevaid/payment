@@ -8,6 +8,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
+    Route::match(['GET', 'HEAD'], '/callback/midtrans', function () {
+        return response()->json([
+            'ok' => true,
+            'message' => 'Midtrans notification endpoint is reachable.',
+        ]);
+    });
+
     Route::post('/callback/midtrans', [MidtransWebhookController::class, 'store']);
 
     Route::middleware(AuthenticateProjectRequest::class)->group(function (): void {

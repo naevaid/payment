@@ -555,7 +555,12 @@ Nilai `callback_status` yang saat ini digunakan:
 Endpoint ini dipakai Midtrans, bukan client app internal.
 
 - Method: `POST`
-- Endpoint: `/api/callback/midtrans`
+- Endpoint: `/api/v1/callback/midtrans`
+
+URL konfigurasi Midtrans production:
+
+- Notification URL: `https://payment.naeva.id/api/v1/callback/midtrans`
+- Finish Redirect URL: `https://payment.naeva.id/midtrans/finish`
 
 Perilaku:
 
