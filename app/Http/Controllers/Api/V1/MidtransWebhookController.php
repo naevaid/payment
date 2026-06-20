@@ -58,9 +58,25 @@ class MidtransWebhookController extends Controller
             ], JsonResponse::HTTP_NOT_FOUND);
         }
 
-        DB::transaction(function () use ($payload, $midtransService, $transaction, $webhookLog): void {
+        $mappedStatus = $midtransService->mapTransactionStatus($payload);
+
+        if ($this->isDuplicateWebhook($transaction, $payload, $mappedStatus->value)) {
+            $webhookLog->forceFill([
+                'transaction_id' => $transaction->id,
+                'processing_status' => 'duplicate',
+                'notes' => 'Duplicate Midtrans webhook received with no state change.',
+                'processed_at' => now(),
+            ])->save();
+
+            return response()->json([
+                'status' => 'accepted',
+                'duplicate' => true,
+            ]);
+        }
+
+        DB::transaction(function () use ($payload, $transaction, $webhookLog, $mappedStatus): void {
             $transaction->forceFill([
-                'status' => $midtransService->mapTransactionStatus($payload),
+                'status' => $mappedStatus,
                 'callback_status' => \App\Enums\CallbackStatus::Queued,
                 'payment_type' => $payload['payment_type'] ?? $transaction->payment_type,
                 'midtrans_transaction_id' => $payload['transaction_id'] ?? $transaction->midtrans_transaction_id,
@@ -84,5 +100,19 @@ class MidtransWebhookController extends Controller
         return response()->json([
             'status' => 'accepted',
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function isDuplicateWebhook(Transaction $transaction, array $payload, string $mappedStatus): bool
+    {
+        $incomingTransactionId = $payload['transaction_id'] ?? null;
+        $incomingPaymentType = $payload['payment_type'] ?? $transaction->payment_type;
+
+        return $transaction->last_webhook_at !== null
+            && $transaction->status->value === $mappedStatus
+            && (blank($incomingTransactionId) || $transaction->midtrans_transaction_id === $incomingTransactionId)
+            && (string) ($transaction->payment_type ?? '') === (string) ($incomingPaymentType ?? '');
     }
 }
