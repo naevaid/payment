@@ -26,6 +26,8 @@ class ExampleTest extends TestCase
             ->assertSee('Dokumentasi integrasi')
             ->assertSee('GET /projects/me')
             ->assertSee('POST /charge')
+            ->assertSee('GET /transactions/lookup')
+            ->assertSee('GET /transactions/{gateway_order_id}/callback-history')
             ->assertSee('Callback Forwarding ke Project Asal');
     }
 

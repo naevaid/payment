@@ -6,6 +6,10 @@ Dokumen ini adalah panduan integrasi untuk tim internal Naeva yang ingin memakai
 
 Dokumen ini mengikuti implementasi yang sudah aktif saat ini. Jika ada perbedaan antara dokumen ini dan perilaku aplikasi, implementasi aplikasi menjadi acuan utama dan dokumen ini harus diperbarui.
 
+Dokumen pendukung:
+
+- `docs/INTEGRATION_SNIPPETS.md` untuk contoh implementasi client app
+
 ## Base URL
 
 - Production: `https://payment.naeva.id`
@@ -117,23 +121,36 @@ atau:
 }
 ```
 
-Response error umum:
+Response error standar tenant:
 
 ```json
 {
-  "message": "Invalid project request signature."
+  "message": "Invalid project request signature.",
+  "error": {
+    "code": "invalid_project_signature",
+    "status": 401
+  }
 }
 ```
 
-Response validasi Laravel:
+Response validasi:
 
 ```json
 {
-  "message": "The customer details field is required. (and 1 more error)",
-  "errors": {
-    "customer_details": [
-      "The customer details field is required."
-    ]
+  "message": "The given data was invalid.",
+  "error": {
+    "code": "validation_failed",
+    "status": 422,
+    "details": {
+      "errors": {
+        "order_id": [
+          "The order id field is required."
+        ],
+        "customer_details.first_name": [
+          "The customer details.first name field is required."
+        ]
+      }
+    }
   }
 }
 ```
@@ -163,10 +180,84 @@ Accept: application/json
     "app_id": "project_a_prod",
     "project_name": "Project A",
     "default_callback_url": "https://project-a.naeva.id/payment/callback",
-    "is_active": true
+    "is_active": true,
+    "authentication": {
+      "mode": "hmac_signature",
+      "signature_algorithm": "sha256",
+      "timestamp_tolerance_seconds": 300,
+      "request_headers": {
+        "app_id": "X-App-ID",
+        "timestamp": "X-Timestamp",
+        "signature": "X-Payment-Signature"
+      },
+      "legacy_secret_header": {
+        "enabled": true,
+        "header": "X-Secret-Key"
+      }
+    },
+    "integration": {
+      "base_url": "https://payment.naeva.id/api/v1",
+      "environment": "production",
+      "currency": "IDR",
+      "endpoints": {
+        "charge": "/api/v1/charge",
+        "project_profile": "/api/v1/projects/me",
+        "transaction_lookup": "/api/v1/transactions/lookup",
+        "transaction_detail": "/api/v1/transactions/{gatewayOrderId}",
+        "callback_history": "/api/v1/transactions/{gatewayOrderId}/callback-history"
+      }
+    },
+    "callback": {
+      "default_url": "https://project-a.naeva.id/payment/callback",
+      "retry": {
+        "queue": "payment-callbacks",
+        "timeout_seconds": 10,
+        "max_attempts": 3,
+        "backoff_seconds": [60, 300, 900]
+      },
+      "delivery_headers": {
+        "app_id": "X-Payment-App-Id",
+        "event": "X-Payment-Event",
+        "attempt": "X-Payment-Attempt",
+        "timestamp": "X-Payment-Timestamp",
+        "delivery_id": "X-Payment-Delivery-Id",
+        "signature": "X-Payment-Signature"
+      },
+      "signature": {
+        "algorithm": "sha256",
+        "uses_project_secret_key": true
+      }
+    },
+    "readiness": {
+      "status": "ready",
+      "can_charge": true,
+      "has_default_callback_url": true,
+      "checks": [
+        {
+          "name": "project_active",
+          "passed": true,
+          "message": "Project aktif dan dapat mengakses API tenant."
+        },
+        {
+          "name": "default_callback_url_configured",
+          "passed": true,
+          "message": "Default callback URL sudah terpasang."
+        },
+        {
+          "name": "hmac_signature_auth_ready",
+          "passed": true,
+          "message": "Gunakan HMAC signature untuk integrasi tenant yang disarankan."
+        }
+      ]
+    }
   }
 }
 ```
+
+Catatan:
+
+- `readiness.status` akan bernilai `action_required` jika ada konfigurasi penting yang belum siap, misalnya `default_callback_url` belum diatur.
+- Endpoint ini adalah cara paling praktis untuk bootstrap integrasi tenant baru karena seluruh header auth, endpoint penting, dan retry callback diringkas di sini.
 
 ### 2. Create Charge
 
@@ -250,7 +341,79 @@ Accept: application/json
 - `422 Unprocessable Entity`: payload request tidak lolos validasi
 - `500 Internal Server Error`: konfigurasi Midtrans tidak lengkap atau error upstream
 
-### 3. Get Transaction by Gateway Order ID
+### 3. Lookup Transaction
+
+- Method: `GET`
+- Endpoint: `/api/v1/transactions/lookup`
+- Auth: `HMAC` atau legacy fallback
+
+#### Query Parameter
+
+- `identifier`: wajib, nilai yang ingin dicari
+- `by`: opsional, nilai `auto`, `gateway_order_id`, atau `client_order_id`
+
+#### Catatan Signature GET
+
+Untuk request `GET` dengan query string, path yang ditandatangani harus mencakup query string persis seperti request akhir.
+
+Contoh:
+
+```text
+/api/v1/transactions/lookup?identifier=INV-LOOKUP-001&by=client_order_id
+```
+
+#### Response 200
+
+```json
+{
+  "data": {
+    "gateway_order_id": "PROJECTLOOKUP-01JABC1234567890",
+    "order_id": "INV-LOOKUP-001",
+    "amount": 123000,
+    "currency": "IDR",
+    "status": "pending",
+    "callback_status": "queued",
+    "payment_type": "bank_transfer",
+    "redirect_url": "https://midtrans.test/snap/lookup-001",
+    "callback_url": "https://project-lookup.test/api/payment/callback",
+    "metadata": {
+      "invoice_id": 7001
+    },
+    "customer_details": {
+      "first_name": "Lookup User",
+      "email": "lookup@example.com"
+    },
+    "timestamps": {
+      "created_at": "2026-06-20 02:30:00",
+      "updated_at": "2026-06-20 02:30:00",
+      "paid_at": null,
+      "expires_at": null,
+      "last_webhook_at": "2026-06-20 02:29:00"
+    },
+    "latest_webhook": {
+      "status": "pending",
+      "processing_status": "processed",
+      "is_signature_valid": true,
+      "received_at": "2026-06-20 02:29:00",
+      "processed_at": "2026-06-20 02:29:00"
+    },
+    "latest_callback": {
+      "attempt": 1,
+      "event_type": "payment.status.updated",
+      "callback_url": "https://project-lookup.test/api/payment/callback",
+      "success": false,
+      "response_status_code": 500,
+      "error_message": "HTTP 500",
+      "delivery_id": "delivery-lookup-001",
+      "next_retry_at": "2026-06-20 02:31:00",
+      "dispatched_at": "2026-06-20 02:30:30",
+      "responded_at": "2026-06-20 02:30:31"
+    }
+  }
+}
+```
+
+### 4. Get Transaction by Gateway Order ID
 
 - Method: `GET`
 - Endpoint: `/api/v1/transactions/{gateway_order_id}`
@@ -277,7 +440,40 @@ Accept: application/json
     "status": "pending",
     "callback_status": "queued",
     "payment_type": "bank_transfer",
-    "redirect_url": "https://app.midtrans.com/snap/v2/vtweb/snap-token-xyz"
+    "redirect_url": "https://app.midtrans.com/snap/v2/vtweb/snap-token-xyz",
+    "callback_url": "https://project-a.naeva.id/api/payment/notification",
+    "metadata": {
+      "invoice_id": 1001
+    },
+    "customer_details": {
+      "first_name": "Budi"
+    },
+    "timestamps": {
+      "created_at": "2026-06-20 02:25:00",
+      "updated_at": "2026-06-20 02:30:00",
+      "paid_at": null,
+      "expires_at": null,
+      "last_webhook_at": "2026-06-20 02:29:00"
+    },
+    "latest_webhook": {
+      "status": "pending",
+      "processing_status": "processed",
+      "is_signature_valid": true,
+      "received_at": "2026-06-20 02:29:00",
+      "processed_at": "2026-06-20 02:29:00"
+    },
+    "latest_callback": {
+      "attempt": 1,
+      "event_type": "payment.status.updated",
+      "callback_url": "https://project-a.naeva.id/api/payment/notification",
+      "success": false,
+      "response_status_code": 500,
+      "error_message": "HTTP 500",
+      "delivery_id": "delivery-001",
+      "next_retry_at": "2026-06-20 02:31:00",
+      "dispatched_at": "2026-06-20 02:30:30",
+      "responded_at": "2026-06-20 02:30:31"
+    }
   }
 }
 ```
@@ -286,6 +482,54 @@ Accept: application/json
 
 - `401 Unauthorized`: auth tidak valid
 - `404 Not Found`: transaksi tidak ditemukan pada project yang sedang login
+
+### 5. Get Callback Delivery History
+
+- Method: `GET`
+- Endpoint: `/api/v1/transactions/{gateway_order_id}/callback-history`
+- Auth: `HMAC` atau legacy fallback
+
+#### Query Parameter
+
+- `limit`: opsional, integer, minimal `1`, maksimal `20`, default `5`
+
+#### Response 200
+
+```json
+{
+  "data": {
+    "gateway_order_id": "PROJECTHISTORY-01JABC1234567890",
+    "order_id": "INV-HISTORY-001",
+    "callback_status": "queued",
+    "history": [
+      {
+        "attempt": 3,
+        "event_type": "payment.status.updated",
+        "callback_url": "https://project-history.test/api/payment/callback",
+        "success": true,
+        "response_status_code": 200,
+        "error_message": null,
+        "delivery_id": "delivery-003",
+        "next_retry_at": null,
+        "dispatched_at": "2026-06-20 02:29:00",
+        "responded_at": "2026-06-20 02:29:01"
+      },
+      {
+        "attempt": 2,
+        "event_type": "payment.status.updated",
+        "callback_url": "https://project-history.test/api/payment/callback",
+        "success": false,
+        "response_status_code": 502,
+        "error_message": "HTTP 502",
+        "delivery_id": "delivery-002",
+        "next_retry_at": "2026-06-20 02:35:00",
+        "dispatched_at": "2026-06-20 02:28:00",
+        "responded_at": "2026-06-20 02:28:01"
+      }
+    ]
+  }
+}
+```
 
 ## Status Transaksi
 
@@ -363,6 +607,9 @@ Setelah webhook Midtrans valid diproses, `payment.naeva.id` akan mengirim callba
 User-Agent: Naeva-Payment-Callback/1.0
 X-Payment-App-Id: project_a_prod
 X-Payment-Event: payment.status.updated
+X-Payment-Attempt: 2
+X-Payment-Timestamp: 1760832000
+X-Payment-Delivery-Id: delivery-002
 X-Payment-Signature: <hmac_sha256_payload_signature>
 Content-Type: application/json
 Accept: application/json
@@ -416,17 +663,19 @@ Jika semua retry gagal, status callback akan tetap tercatat pada log operasional
 
 Error umum yang saat ini mungkin ditemui:
 
-| HTTP | Message | Arti |
-| --- | --- | --- |
-| `401` | `Missing project authentication app id header.` | Header `X-App-ID` tidak dikirim |
-| `401` | `Missing project HMAC authentication headers.` | Header HMAC tidak lengkap |
-| `401` | `Invalid or expired project request timestamp.` | Timestamp di luar toleransi |
-| `401` | `Invalid project request signature.` | Signature HMAC tidak cocok |
-| `401` | `Missing project authentication headers.` | Header auth legacy/HMAC tidak lengkap |
-| `401` | `Invalid project credentials.` | `app_id` atau secret tidak valid |
-| `403` | `Invalid signature.` | Signature webhook Midtrans tidak valid |
-| `404` | `Transaction not found.` | Transaksi tidak ditemukan |
-| `422` | Laravel validation error | Field request tidak valid |
+| HTTP | Code | Message | Arti |
+| --- | --- | --- | --- |
+| `401` | `missing_project_app_id` | `Missing project authentication app id header.` | Header `X-App-ID` tidak dikirim |
+| `401` | `missing_project_hmac_headers` | `Missing project HMAC authentication headers.` | Header HMAC tidak lengkap |
+| `401` | `invalid_project_timestamp` | `Invalid or expired project request timestamp.` | Timestamp di luar toleransi |
+| `401` | `invalid_project_signature` | `Invalid project request signature.` | Signature HMAC tidak cocok |
+| `401` | `missing_project_auth_headers` | `Missing project authentication headers.` | Header auth legacy/HMAC tidak lengkap |
+| `401` | `invalid_project_credentials` | `Invalid project credentials.` | `app_id` atau secret tidak valid |
+| `403` | `project_inactive` | `Project is inactive.` | Project ditemukan tetapi dinonaktifkan |
+| `409` | `order_id_conflict` | `Order ID sudah pernah digunakan dengan payload yang berbeda.` | Request charge duplikat dengan payload berbeda |
+| `404` | `resource_not_found` | `Resource not found.` | Transaksi/resource tidak ditemukan pada project aktif |
+| `404` | `endpoint_not_found` | `Endpoint not found.` | Route API tenant tidak ada |
+| `422` | `validation_failed` | `The given data was invalid.` | Field request tidak valid |
 
 ## Contoh cURL
 
@@ -461,11 +710,33 @@ curl --request GET \
   --header "X-Payment-Signature: <signature>"
 ```
 
-### Transaction Lookup
+### Transaction Lookup by Client Order ID
+
+```bash
+curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/lookup?identifier=INV-LOOKUP-001&by=client_order_id" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: <signature>"
+```
+
+### Transaction Detail
 
 ```bash
 curl --request GET \
   --url "https://payment.naeva.id/api/v1/transactions/PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45" \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: <signature>"
+```
+
+### Callback History
+
+```bash
+curl --request GET \
+  --url "https://payment.naeva.id/api/v1/transactions/PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45/callback-history?limit=5" \
   --header "Accept: application/json" \
   --header "X-App-ID: project_a_prod" \
   --header "X-Timestamp: 1760832000" \
@@ -477,4 +748,8 @@ curl --request GET \
 - `gateway_order_id` dibuat oleh `payment.naeva.id` dan dipakai untuk relasi internal ke Midtrans.
 - `order_id` tetap merepresentasikan ID order milik client app.
 - Client app sebaiknya menyimpan `gateway_order_id` setelah `charge` berhasil untuk mempermudah lookup dan audit.
+- Untuk request `GET` yang memakai query string, query string wajib ikut dimasukkan ke path yang ditandatangani.
+- Gunakan `GET /projects/me` sebagai endpoint readiness awal saat provisioning integrasi tenant baru.
+- Gunakan `GET /transactions/lookup` bila tenant lebih mudah mencari transaksi dengan `client_order_id`.
+- Gunakan `GET /transactions/{gateway_order_id}/callback-history` untuk audit delivery callback ke project asal.
 - Endpoint ini dirancang untuk server-to-server integration, bukan dipanggil langsung dari browser publik.
