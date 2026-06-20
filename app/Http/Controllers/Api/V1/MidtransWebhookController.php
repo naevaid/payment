@@ -17,7 +17,10 @@ class MidtransWebhookController extends Controller
     public function store(Request $request, MidtransService $midtransService): JsonResponse
     {
         $payload = $request->all();
+        $transaction = Transaction::where('gateway_order_id', $payload['order_id'] ?? '')
+            ->first();
         $isReachabilityCheck = $this->isReachabilityCheck($request, $payload);
+        $isUnknownVeritransNotification = $this->isUnknownVeritransNotification($request, $payload, $transaction);
         $signatureValid = $isReachabilityCheck
             ? false
             : $midtransService->verifySignature($payload);
@@ -47,6 +50,20 @@ class MidtransWebhookController extends Controller
             ]);
         }
 
+        if ($isUnknownVeritransNotification) {
+            $webhookLog->forceFill([
+                'processing_status' => 'ignored',
+                'notes' => 'Midtrans notification ignored because order ID is unknown to this payment service.',
+                'processed_at' => now(),
+            ])->save();
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Midtrans notification endpoint is reachable.',
+                'ignored' => true,
+            ]);
+        }
+
         if (! $signatureValid) {
             $webhookLog->forceFill([
                 'processing_status' => 'rejected',
@@ -58,9 +75,6 @@ class MidtransWebhookController extends Controller
                 'message' => 'Invalid signature.',
             ], JsonResponse::HTTP_FORBIDDEN);
         }
-
-        $transaction = Transaction::where('gateway_order_id', $payload['order_id'] ?? '')
-            ->first();
 
         if (! $transaction) {
             $webhookLog->forceFill([
@@ -145,5 +159,17 @@ class MidtransWebhookController extends Controller
             && blank($payload['transaction_status'] ?? null)
             && blank($payload['status_code'] ?? null)
             && blank($payload['gross_amount'] ?? null);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function isUnknownVeritransNotification(Request $request, array $payload, ?Transaction $transaction): bool
+    {
+        $userAgent = strtolower((string) $request->userAgent());
+
+        return str_contains($userAgent, 'veritrans')
+            && filled($payload['order_id'] ?? null)
+            && $transaction === null;
     }
 }

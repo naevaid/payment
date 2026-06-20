@@ -108,6 +108,30 @@ class MidtransWebhookTest extends TestCase
         ]);
     }
 
+    public function test_midtrans_notification_with_unknown_order_from_veritrans_is_ignored_with_success_response(): void
+    {
+        $response = $this->withHeaders([
+            'User-Agent' => 'Veritrans',
+        ])->postJson('/api/v1/callback/midtrans', [
+            'order_id' => 'MIDTRANS-TEST-ORDER-UNKNOWN',
+            'transaction_status' => 'settlement',
+            'status_code' => '200',
+            'gross_amount' => '10000',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('message', 'Midtrans notification endpoint is reachable.')
+            ->assertJsonPath('ignored', true);
+
+        $this->assertDatabaseHas('midtrans_webhook_logs', [
+            'order_id' => 'MIDTRANS-TEST-ORDER-UNKNOWN',
+            'processing_status' => 'ignored',
+            'notes' => 'Midtrans notification ignored because order ID is unknown to this payment service.',
+            'is_signature_valid' => false,
+        ]);
+    }
+
     public function test_duplicate_midtrans_webhook_is_accepted_without_dispatching_duplicate_callback_job(): void
     {
         Queue::fake();
