@@ -185,6 +185,10 @@
                         toggleButton.setAttribute('title', isMasked ? 'Sembunyikan secret key' : 'Lihat secret key');
                         toggleButton.querySelector('[data-icon-eye-open]')?.classList.toggle('is-hidden', !isMasked);
                         toggleButton.querySelector('[data-icon-eye-closed]')?.classList.toggle('is-hidden', isMasked);
+                        const toggleLabel = toggleButton.querySelector('[data-secret-toggle-label]');
+                        if (toggleLabel) {
+                            toggleLabel.textContent = isMasked ? 'Sembunyikan' : 'Lihat';
+                        }
 
                         return;
                     }

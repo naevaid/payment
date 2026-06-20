@@ -238,6 +238,42 @@ class ChargeApiTest extends TestCase
             ->assertJsonPath('message', 'Invalid project request signature.');
     }
 
+    public function test_inactive_project_cannot_create_charge_even_with_valid_signature(): void
+    {
+        config([
+            'payment.auth.allow_legacy_secret_header' => false,
+        ]);
+
+        $project = Project::create([
+            'app_id' => 'project_inactive_prod',
+            'project_name' => 'Project Inactive',
+            'secret_key' => 'secret-inactive-123',
+            'default_callback_url' => 'https://project-inactive.test/api/payment/callback',
+            'is_active' => false,
+        ]);
+
+        $payload = [
+            'order_id' => 'INV-INACTIVE-001',
+            'gross_amount' => 99000,
+            'customer_details' => [
+                'first_name' => 'Inactive Project',
+            ],
+        ];
+
+        $timestamp = (string) now()->timestamp;
+
+        $response = $this->postJson(
+            '/api/v1/charge',
+            $payload,
+            $this->signedHeaders($project, $payload, $timestamp),
+        );
+
+        $response->assertForbidden()
+            ->assertJsonPath('message', 'Project is inactive.');
+
+        $this->assertDatabaseCount('transactions', 0);
+    }
+
     public function test_project_can_still_use_legacy_secret_header_during_migration(): void
     {
         config([

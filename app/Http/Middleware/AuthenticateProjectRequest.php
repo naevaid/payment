@@ -36,9 +36,15 @@ class AuthenticateProjectRequest
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $project = Project::active()
+        $project = Project::query()
             ->where('app_id', $appId)
             ->first();
+
+        if ($project && ! $project->is_active) {
+            return response()->json([
+                'message' => 'Project is inactive.',
+            ], Response::HTTP_FORBIDDEN);
+        }
 
         if (filled($signature) || filled($timestamp)) {
             if (blank($signature) || blank($timestamp)) {

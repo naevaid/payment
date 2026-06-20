@@ -57,7 +57,7 @@
 
                                 <div class="secret-actions">
                                     <button
-                                        class="icon-button"
+                                        class="icon-button secret-action-button"
                                         type="button"
                                         data-secret-toggle="generated-secret-key"
                                         aria-label="Lihat secret key"
@@ -73,11 +73,11 @@
                                             <path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a18.1 18.1 0 0 1-4 4.7"></path>
                                             <path d="M6.6 6.7C3.8 8.3 2 12 2 12a18.7 18.7 0 0 0 7.4 5.3"></path>
                                         </svg>
-                                        <span class="sr-only">Lihat secret key</span>
+                                        <span class="secret-action-label" data-secret-toggle-label>Lihat</span>
                                     </button>
 
                                     <button
-                                        class="icon-button"
+                                        class="icon-button secret-action-button"
                                         type="button"
                                         data-secret-copy="generated-secret-key"
                                         aria-label="Salin secret key"
@@ -87,7 +87,7 @@
                                             <rect x="9" y="9" width="13" height="13" rx="2"></rect>
                                             <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                         </svg>
-                                        <span class="sr-only" data-copy-feedback>Salin secret key</span>
+                                        <span class="secret-action-label" data-copy-feedback>Salin</span>
                                     </button>
                                 </div>
                             </div>
@@ -170,7 +170,7 @@
 
                             <div class="secret-actions">
                                 <button
-                                    class="icon-button"
+                                    class="icon-button secret-action-button"
                                     type="button"
                                     data-secret-toggle="project-secret-key"
                                     aria-label="Lihat secret key"
@@ -186,11 +186,11 @@
                                         <path d="M9.9 5.2A10.7 10.7 0 0 1 12 5c6.4 0 10 7 10 7a18.1 18.1 0 0 1-4 4.7"></path>
                                         <path d="M6.6 6.7C3.8 8.3 2 12 2 12a18.7 18.7 0 0 0 7.4 5.3"></path>
                                     </svg>
-                                    <span class="sr-only">Lihat secret key</span>
+                                    <span class="secret-action-label" data-secret-toggle-label>Lihat</span>
                                 </button>
 
                                 <button
-                                    class="icon-button"
+                                    class="icon-button secret-action-button"
                                     type="button"
                                     data-secret-copy="project-secret-key"
                                     aria-label="Salin secret key"
@@ -200,7 +200,7 @@
                                         <rect x="9" y="9" width="13" height="13" rx="2"></rect>
                                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                                     </svg>
-                                    <span class="sr-only" data-copy-feedback>Salin secret key</span>
+                                    <span class="secret-action-label" data-copy-feedback>Salin</span>
                                 </button>
                             </div>
                         </div>
