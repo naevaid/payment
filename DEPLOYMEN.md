@@ -136,6 +136,11 @@ MIDTRANS_VERIFY_SSL=true
 PAYMENT_DEFAULT_CURRENCY=IDR
 PAYMENT_AUTH_APP_ID_HEADER=X-App-ID
 PAYMENT_AUTH_SECRET_HEADER=X-Secret-Key
+PAYMENT_AUTH_SIGNATURE_HEADER=X-Payment-Signature
+PAYMENT_AUTH_TIMESTAMP_HEADER=X-Timestamp
+PAYMENT_AUTH_SIGNATURE_ALGORITHM=sha256
+PAYMENT_AUTH_TIMESTAMP_TOLERANCE=300
+PAYMENT_AUTH_ALLOW_LEGACY_SECRET_HEADER=true
 PAYMENT_CALLBACK_QUEUE=payment-callbacks
 PAYMENT_CALLBACK_TIMEOUT=10
 PAYMENT_CALLBACK_MAX_ATTEMPTS=3
@@ -148,6 +153,35 @@ Catatan:
 - di server production, gunakan kredensial Midtrans production
 - jangan menyalin `.env` lokal development ke server secara mentah
 - pastikan `APP_KEY` production sudah ada
+- aktifkan HMAC request signing untuk client app baru; header `X-Secret-Key` hanya fallback sementara selama masa migrasi
+
+## Auth API Tenant
+
+Sesuai PRD, integrasi antar-server sekarang disarankan memakai signature HMAC per request.
+
+Header minimal:
+
+```text
+X-App-ID: project_a_prod
+X-Timestamp: 1760000000
+X-Payment-Signature: <hmac-signature>
+```
+
+String yang ditandatangani:
+
+```text
+{HTTP_METHOD}
+{REQUEST_PATH}
+{APP_ID}
+{UNIX_TIMESTAMP}
+{SHA256_RAW_BODY}
+```
+
+Aturan:
+
+- algoritma default: `HMAC-SHA256`
+- toleransi timestamp default: `300` detik
+- `X-Secret-Key` tetap didukung sementara jika `PAYMENT_AUTH_ALLOW_LEGACY_SECRET_HEADER=true`
 
 ## Route Penting
 

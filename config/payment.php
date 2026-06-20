@@ -6,6 +6,15 @@ return [
     'auth' => [
         'app_id_header' => env('PAYMENT_AUTH_APP_ID_HEADER', 'X-App-ID'),
         'secret_key_header' => env('PAYMENT_AUTH_SECRET_HEADER', 'X-Secret-Key'),
+        'signature_header' => env('PAYMENT_AUTH_SIGNATURE_HEADER', 'X-Payment-Signature'),
+        'timestamp_header' => env('PAYMENT_AUTH_TIMESTAMP_HEADER', 'X-Timestamp'),
+        'signature_algorithm' => env('PAYMENT_AUTH_SIGNATURE_ALGORITHM', 'sha256'),
+        'timestamp_tolerance_seconds' => (int) env('PAYMENT_AUTH_TIMESTAMP_TOLERANCE', 300),
+        'allow_legacy_secret_header' => filter_var(
+            env('PAYMENT_AUTH_ALLOW_LEGACY_SECRET_HEADER', true),
+            FILTER_VALIDATE_BOOL,
+            FILTER_NULL_ON_FAILURE,
+        ) ?? true,
     ],
 
     'callback' => [

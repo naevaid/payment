@@ -3,12 +3,17 @@
 namespace App\Http\Middleware;
 
 use App\Models\Project;
+use App\Support\ProjectRequestSignature;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class AuthenticateProjectRequest
 {
+    public function __construct(
+        protected ProjectRequestSignature $requestSignature,
+    ) {}
+
     /**
      * Handle an incoming request.
      *
@@ -18,18 +23,70 @@ class AuthenticateProjectRequest
     {
         $appIdHeader = (string) config('payment.auth.app_id_header', 'X-App-ID');
         $secretKeyHeader = (string) config('payment.auth.secret_key_header', 'X-Secret-Key');
+        $signatureHeader = (string) config('payment.auth.signature_header', 'X-Payment-Signature');
+        $timestampHeader = (string) config('payment.auth.timestamp_header', 'X-Timestamp');
         $appId = (string) $request->header($appIdHeader);
         $secretKey = (string) $request->header($secretKeyHeader);
+        $signature = (string) $request->header($signatureHeader);
+        $timestamp = (string) $request->header($timestampHeader);
 
-        if (blank($appId) || blank($secretKey)) {
+        if (blank($appId)) {
             return response()->json([
-                'message' => 'Missing project authentication headers.',
+                'message' => 'Missing project authentication app id header.',
             ], Response::HTTP_UNAUTHORIZED);
         }
 
         $project = Project::active()
             ->where('app_id', $appId)
             ->first();
+
+        if (filled($signature) || filled($timestamp)) {
+            if (blank($signature) || blank($timestamp)) {
+                return response()->json([
+                    'message' => 'Missing project HMAC authentication headers.',
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+
+            if (! $project) {
+                return response()->json([
+                    'message' => 'Invalid project credentials.',
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+
+            $allowedSkewSeconds = (int) config('payment.auth.timestamp_tolerance_seconds', 300);
+
+            if (! $this->requestSignature->hasValidTimestamp($timestamp, $allowedSkewSeconds)) {
+                return response()->json([
+                    'message' => 'Invalid or expired project request timestamp.',
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+
+            $expectedSignature = $this->requestSignature->forRequest(
+                request: $request,
+                appId: (string) $project->app_id,
+                secretKey: (string) $project->secret_key,
+                timestamp: $timestamp,
+            );
+
+            if (! hash_equals($expectedSignature, $signature)) {
+                return response()->json([
+                    'message' => 'Invalid project request signature.',
+                ], Response::HTTP_UNAUTHORIZED);
+            }
+
+            $request->attributes->set('project', $project);
+            $request->attributes->set('project_auth_mode', 'hmac');
+
+            return $next($request);
+        }
+
+        $allowLegacySecretHeader = (bool) config('payment.auth.allow_legacy_secret_header', true);
+
+        if (! $allowLegacySecretHeader || blank($secretKey)) {
+            return response()->json([
+                'message' => 'Missing project authentication headers.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
 
         if (! $project || ! hash_equals((string) $project->secret_key, $secretKey)) {
             return response()->json([
@@ -38,6 +95,7 @@ class AuthenticateProjectRequest
         }
 
         $request->attributes->set('project', $project);
+        $request->attributes->set('project_auth_mode', 'legacy_header');
 
         return $next($request);
     }
