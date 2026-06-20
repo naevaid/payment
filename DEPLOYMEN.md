@@ -195,7 +195,7 @@ Route publik:
 Route API:
 
 - `POST /api/v1/charge`
-- `POST /api/callback/midtrans`
+- `POST /api/v1/callback/midtrans`
 - `GET /api/v1/projects/me`
 - `GET /api/v1/transactions/{gatewayOrderId}`
 

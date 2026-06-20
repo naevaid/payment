@@ -696,14 +696,14 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
                         <section class="section">
                             <h2>Webhook Midtrans</h2>
                             <p>
-                                Endpoint <code class="inline-code">POST /api/callback/midtrans</code> digunakan oleh Midtrans.
+                                Endpoint <code class="inline-code">POST /api/v1/callback/midtrans</code> digunakan oleh Midtrans.
                                 Endpoint ini memverifikasi signature webhook, mencari transaksi internal, memperbarui status, lalu
                                 menjadwalkan callback async ke project asal.
                             </p>
 
                             <div class="callout">
                                 URL yang bisa dipakai pada konfigurasi Midtrans:
-                                <code class="inline-code">Notification URL = https://payment.naeva.id/api/callback/midtrans</code>
+                                <code class="inline-code">Notification URL = https://payment.naeva.id/api/v1/callback/midtrans</code>
                                 dan
                                 <code class="inline-code">Finish Redirect URL = https://payment.naeva.id/midtrans/finish</code>.
                             </div>
