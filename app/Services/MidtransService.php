@@ -23,20 +23,32 @@ class MidtransService
      */
     public function createSnapTransaction(Transaction $transaction): array
     {
+        $payload = [
+            'transaction_details' => [
+                'order_id' => $transaction->gateway_order_id,
+                'gross_amount' => $transaction->amount,
+            ],
+            'customer_details' => $transaction->customer_details ?? [],
+            'item_details' => $transaction->item_details ?? [],
+            'custom_field1' => (string) $transaction->project?->app_id,
+            'custom_field2' => $transaction->client_order_id,
+        ];
+
+        $enabledPayments = config('services.midtrans.enabled_payments');
+
+        if (is_array($enabledPayments) && $enabledPayments !== []) {
+            $payload['enabled_payments'] = $enabledPayments;
+        }
+
+        $expiry = $this->buildExpiryPayload($transaction);
+
+        if ($expiry !== null) {
+            $payload['expiry'] = $expiry;
+        }
+
         $response = $this->client()->post(
             config('services.midtrans.snap_path'),
-            [
-                'transaction_details' => [
-                    'order_id' => $transaction->gateway_order_id,
-                    'gross_amount' => $transaction->amount,
-                ],
-                'customer_details' => $transaction->customer_details ?? [],
-                'item_details' => $transaction->item_details ?? [],
-                'custom_field1' => (string) $transaction->project?->app_id,
-                'custom_field2' => $transaction->client_order_id,
-                'enabled_payments' => config('services.midtrans.enabled_payments'),
-                'expiry' => $this->buildExpiryPayload($transaction),
-            ],
+            $payload,
         );
 
         $response->throw();
