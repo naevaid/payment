@@ -10,6 +10,12 @@
     @if ($log->transaction)
         <a class="button button-primary" href="{{ route('dashboard.transactions.show', $log->transaction) }}">Lihat transaksi</a>
     @endif
+    @if (! $log->success && $log->transaction)
+        <form class="inline-form" method="POST" action="{{ route('dashboard.callback-logs.retry', $log) }}">
+            @csrf
+            <button class="button" type="submit">Retry Manual Callback</button>
+        </form>
+    @endif
 @endsection
 
 @section('content')

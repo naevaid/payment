@@ -78,7 +78,18 @@
                                     </td>
                                     <td>{{ $log->response_status_code ?? '-' }}</td>
                                     <td>{{ $log->dispatched_at?->format('d M Y H:i:s') }}</td>
-                                    <td><a class="button" href="{{ route('dashboard.callback-logs.show', $log) }}">Detail</a></td>
+                                    <td>
+                                        <div class="table-actions">
+                                            <a class="button" href="{{ route('dashboard.callback-logs.show', $log) }}">Detail</a>
+
+                                            @if (! $log->success && $log->transaction)
+                                                <form class="inline-form" method="POST" action="{{ route('dashboard.callback-logs.retry', $log) }}">
+                                                    @csrf
+                                                    <button class="button button-primary" type="submit">Retry</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                    </td>
                                 </tr>
                             @endforeach
                         </tbody>

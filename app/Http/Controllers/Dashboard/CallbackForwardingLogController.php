@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Enums\CallbackStatus;
 use App\Http\Controllers\Controller;
+use App\Jobs\ForwardTransactionCallback;
 use App\Models\CallbackForwardingLog;
 use App\Models\Project;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -49,5 +52,37 @@ class CallbackForwardingLogController extends Controller
         return view('dashboard.callback-logs.show', [
             'log' => $callbackLog,
         ]);
+    }
+
+    public function retry(CallbackForwardingLog $callbackLog): RedirectResponse
+    {
+        $callbackLog->loadMissing(['transaction.project', 'project']);
+
+        $transaction = $callbackLog->transaction;
+
+        if (! $transaction) {
+            return back()->withErrors([
+                'callback_log' => 'Retry manual tidak bisa dijalankan karena transaksi terkait tidak ditemukan.',
+            ]);
+        }
+
+        $callbackUrl = $transaction->callback_url ?: $transaction->project?->default_callback_url;
+
+        if (blank($callbackUrl)) {
+            return back()->withErrors([
+                'callback_log' => 'Retry manual tidak bisa dijalankan karena callback URL belum dikonfigurasi.',
+            ]);
+        }
+
+        $transaction->forceFill([
+            'callback_status' => CallbackStatus::Queued,
+        ])->save();
+
+        ForwardTransactionCallback::dispatch($transaction->id)
+            ->onQueue((string) config('payment.callback.queue'));
+
+        return redirect()
+            ->route('dashboard.callback-logs.show', $callbackLog)
+            ->with('status', 'Retry manual callback sudah dijadwalkan untuk transaksi ini.');
     }
 }

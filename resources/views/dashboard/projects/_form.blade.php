@@ -26,7 +26,7 @@
 
     <div class="field">
         <label for="default_callback_url">Default callback URL</label>
-        <input class="input" id="default_callback_url" type="url" name="default_callback_url" value="{{ old('default_callback_url', $project->default_callback_url) }}" placeholder="https://client.naeva.id/payment/callback">
+        <input class="input" id="default_callback_url" type="url" name="default_callback_url" value="{{ old('default_callback_url', $project->default_callback_url) }}" placeholder="https://project.naeva.id/payment/callback">
     </div>
 </div>
 

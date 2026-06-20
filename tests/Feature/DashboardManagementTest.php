@@ -4,12 +4,14 @@ namespace Tests\Feature;
 
 use App\Enums\CallbackStatus;
 use App\Enums\TransactionStatus;
+use App\Jobs\ForwardTransactionCallback;
 use App\Models\CallbackForwardingLog;
 use App\Models\MidtransWebhookLog;
 use App\Models\Project;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class DashboardManagementTest extends TestCase
@@ -59,7 +61,7 @@ class DashboardManagementTest extends TestCase
             'app_id' => 'APP-OPS',
             'project_name' => 'Ops Project',
             'secret_key' => 'ops-project-secret-1234',
-            'default_callback_url' => 'https://ops.naeva.id/callback',
+            'default_callback_url' => 'https://ops.naeva.id/payment/callback',
             'is_active' => true,
         ]);
 
@@ -72,7 +74,7 @@ class DashboardManagementTest extends TestCase
             'currency' => 'IDR',
             'status' => TransactionStatus::Pending,
             'callback_status' => CallbackStatus::Queued,
-            'callback_url' => 'https://ops.naeva.id/callback',
+            'callback_url' => 'https://ops.naeva.id/payment/callback',
             'payment_type' => 'bank_transfer',
             'customer_details' => ['first_name' => 'Amin'],
             'item_details' => [['name' => 'Invoice', 'price' => 125000]],
@@ -96,7 +98,7 @@ class DashboardManagementTest extends TestCase
         $callbackLog = CallbackForwardingLog::create([
             'transaction_id' => $transaction->id,
             'project_id' => $project->id,
-            'callback_url' => 'https://ops.naeva.id/callback',
+            'callback_url' => 'https://ops.naeva.id/payment/callback',
             'attempt' => 1,
             'event_type' => 'payment.status.updated',
             'payload' => ['status' => 'pending'],
@@ -133,12 +135,64 @@ class DashboardManagementTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard.callback-logs.index'))
             ->assertOk()
-            ->assertSee('https://ops.naeva.id/callback');
+            ->assertSee('https://ops.naeva.id/payment/callback');
 
         $this->actingAs($user)
             ->get(route('dashboard.callback-logs.show', $callbackLog))
             ->assertOk()
             ->assertSee('payment.status.updated')
             ->assertSee('ok');
+    }
+
+    public function test_authenticated_user_can_retry_failed_callback_from_dashboard(): void
+    {
+        Queue::fake();
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'app_id' => 'APP-RETRY',
+            'project_name' => 'Retry Project',
+            'secret_key' => 'retry-project-secret-1234',
+            'default_callback_url' => 'https://retry.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $transaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-RETRY-001',
+            'client_order_id' => 'CLIENT-RETRY-001',
+            'amount' => 99000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Settlement,
+            'callback_status' => CallbackStatus::Failed,
+            'callback_url' => 'https://retry.naeva.id/payment/callback',
+        ]);
+
+        $callbackLog = CallbackForwardingLog::create([
+            'transaction_id' => $transaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://retry.naeva.id/payment/callback',
+            'attempt' => 3,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['status' => 'settlement'],
+            'request_headers' => ['X-Signature' => 'retry'],
+            'response_status_code' => 500,
+            'response_body' => 'server error',
+            'success' => false,
+            'error_message' => 'HTTP 500',
+            'dispatched_at' => now(),
+            'responded_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->post(route('dashboard.callback-logs.retry', $callbackLog));
+
+        $response->assertRedirect(route('dashboard.callback-logs.show', $callbackLog));
+        $response->assertSessionHas('status', 'Retry manual callback sudah dijadwalkan untuk transaksi ini.');
+
+        $transaction->refresh();
+
+        $this->assertSame(CallbackStatus::Queued, $transaction->callback_status);
+        Queue::assertPushed(ForwardTransactionCallback::class, fn (ForwardTransactionCallback $job) => $job->transactionId === $transaction->id);
     }
 }

@@ -38,6 +38,7 @@ Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard/webhook-logs/{webhookLog}', [WebhookLogController::class, 'show'])->name('dashboard.webhook-logs.show');
     Route::get('/dashboard/callback-logs', [CallbackForwardingLogController::class, 'index'])->name('dashboard.callback-logs.index');
     Route::get('/dashboard/callback-logs/{callbackLog}', [CallbackForwardingLogController::class, 'show'])->name('dashboard.callback-logs.show');
+    Route::post('/dashboard/callback-logs/{callbackLog}/retry', [CallbackForwardingLogController::class, 'retry'])->name('dashboard.callback-logs.retry');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
 
