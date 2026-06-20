@@ -34,13 +34,14 @@ class ExampleTest extends TestCase
             ->assertSee('GET /transactions/{gateway_order_id}/callback-history')
             ->assertSee('/api/v1/callback/midtrans')
             ->assertSee('/midtrans/finish')
-            ->assertSee('Callback Forwarding ke Project Asal')
+            ->assertSee('Callback untuk Sistem Anda')
             ->assertSee('Contoh request cURL')
             ->assertSee('Example request body')
-            ->assertSee('Example response dari endpoint project')
+            ->assertSee('Response yang harus dikembalikan endpoint Anda')
             ->assertSee('Contoh payload webhook dari Midtrans')
-            ->assertSee('Contoh request mentah callback test')
-            ->assertSee('Raw body callback status transaksi')
+            ->assertSee('Yang perlu Anda siapkan')
+            ->assertSee('Contoh request yang akan diterima saat Test Callback URL')
+            ->assertSee('Cara verifikasi signature di sistem Anda')
             ->assertSee('Signature callback payment tidak valid.');
     }
 

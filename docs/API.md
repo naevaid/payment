@@ -719,14 +719,20 @@ Status: `200`
 
 Status: `200`
 
-## Callback Forwarding ke Client App
+## Callback untuk Sistem Anda
 
-Setelah webhook Midtrans valid diproses, `payment.naeva.id` akan mengirim callback ke:
+Bagian ini ditulis untuk pengguna layanan `payment.naeva.id`, yaitu tim yang ingin menghubungkan sistem mereka ke callback dari service payment.
 
-- `custom_callback_url` dari request charge, jika ada
-- jika tidak ada, `default_callback_url` milik project
+### Yang Perlu Anda Siapkan
 
-### Header Callback yang Dikirim
+- buat endpoint `POST` di server Anda, misalnya `https://client-app.example.com/api/payment/callback`
+- simpan `App ID` dan `Secret Key` project Anda dari dashboard
+- isi `default_callback_url` pada project, atau kirim `custom_callback_url` saat membuat charge
+- pastikan endpoint Anda bisa menerima request `application/json`
+
+Jika `custom_callback_url` dikirim saat `POST /charge`, maka callback transaksi itu akan dikirim ke URL tersebut. Jika tidak, callback akan dikirim ke `default_callback_url` project Anda.
+
+### Header yang Akan Diterima Sistem Anda
 
 ```text
 User-Agent: Naeva-Payment-Callback/1.0
@@ -740,9 +746,15 @@ Content-Type: application/json
 Accept: application/json
 ```
 
-### Contoh Request Mentah Callback Test
+### Contoh Endpoint yang Harus Anda Siapkan
 
-Request ini dipakai saat tombol `Test Callback URL` dijalankan dari dashboard project.
+```text
+POST https://client-app.example.com/api/payment/callback
+```
+
+### Contoh Request yang Akan Diterima Saat Test Callback URL
+
+Saat Anda menekan tombol `Test Callback URL` di dashboard project, endpoint Anda akan menerima request seperti ini:
 
 ```http
 POST /api/payment/callback HTTP/1.1
@@ -761,40 +773,17 @@ Content-Length: 278
 {"test":true,"event":"payment.callback.test","message":"This is a callback connectivity test from payment.naeva.id","app_id":"APP-FI4YVWSGZHXN","project_name":"LevelUP adsPRO","callback_url":"https://client-app.example.com/api/payment/callback","sent_at":"2026-06-20 15:00:00"}
 ```
 
-### Raw Body Callback Test
+### Raw Body yang Harus Anda Verifikasi Saat Test Callback URL
 
-Nilai `X-Payment-Signature` di atas dihitung dari body mentah berikut, tanpa spasi tambahan dan tanpa reformat JSON:
+Nilai `X-Payment-Signature` dihitung dari body mentah berikut, jadi endpoint Anda harus memverifikasi body apa adanya tanpa menambah spasi atau mengubah format JSON:
 
 ```json
 {"test":true,"event":"payment.callback.test","message":"This is a callback connectivity test from payment.naeva.id","app_id":"APP-FI4YVWSGZHXN","project_name":"LevelUP adsPRO","callback_url":"https://client-app.example.com/api/payment/callback","sent_at":"2026-06-20 15:00:00"}
 ```
 
-### Example Request Callback
+### Contoh Request Status Transaksi yang Akan Diterima Sistem Anda
 
-```text
-POST https://client-app.example.com/api/payment/callback
-```
-
-### Payload Callback
-
-```json
-{
-  "order_id": "INV-PROJECTA-2026-001",
-  "gateway_order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
-  "transaction_status": "settlement",
-  "payment_type": "bank_transfer",
-  "gross_amount": 150000,
-  "transaction_time": "2026-06-20 02:30:00",
-  "metadata": {
-    "invoice_id": 1001,
-    "source": "project-a"
-  }
-}
-```
-
-### Contoh Request Mentah Callback Status Transaksi
-
-Request ini dipakai saat `payment.naeva.id` meneruskan update status transaksi ke callback URL project.
+Ketika status pembayaran berubah, endpoint Anda akan menerima request seperti ini:
 
 ```http
 POST /api/payment/callback HTTP/1.1
@@ -813,36 +802,15 @@ Content-Length: 284
 {"order_id":"INV-PROJECTA-2026-001","gateway_order_id":"PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45","transaction_status":"settlement","payment_type":"bank_transfer","gross_amount":150000,"transaction_time":"2026-06-20 14:30:00","metadata":{"invoice_id":1001,"source":"project-a"}}
 ```
 
-### Raw Body Callback Status Transaksi
-
-Nilai `X-Payment-Signature` di atas dihitung dari body mentah berikut:
+### Raw Body Status Transaksi yang Harus Anda Verifikasi
 
 ```json
 {"order_id":"INV-PROJECTA-2026-001","gateway_order_id":"PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45","transaction_status":"settlement","payment_type":"bank_transfer","gross_amount":150000,"transaction_time":"2026-06-20 14:30:00","metadata":{"invoice_id":1001,"source":"project-a"}}
 ```
 
-### Example Response dari Client App
+### Cara Verifikasi Signature di Sistem Anda
 
-```json
-{
-  "received": true,
-  "message": "Callback diterima."
-}
-```
-
-### Verifikasi Signature Callback
-
-Signature callback dibentuk dari JSON payload mentah dengan secret key project:
-
-```php
-$signature = hash_hmac(
-    'sha256',
-    json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-    $projectSecretKey
-);
-```
-
-Pada sisi penerima, verifikasi harus memakai body mentah request, bukan array hasil parsing yang di-encode ulang:
+Gunakan `Secret Key` project Anda untuk menghitung HMAC dari raw body request yang diterima.
 
 ```php
 $rawBody = $request->getContent();
@@ -854,20 +822,33 @@ if (! hash_equals($expectedSignature, $receivedSignature)) {
 }
 ```
 
-### Ekspektasi Response dari Client App
+Penyebab paling umum test callback gagal:
 
-- status `2xx` dianggap sukses
-- status non-`2xx` dianggap gagal dan akan masuk mekanisme retry
+- signature dihitung dari array yang sudah diparse lalu di-encode ulang
+- memakai secret key yang bukan milik project yang aktif
+- endpoint Anda tidak merespons `2xx`
+- endpoint Anda memblokir request dari server `payment.naeva.id`
+
+### Response yang Harus Dikembalikan Endpoint Anda
+
+Jika callback berhasil diproses di sistem Anda, balas dengan HTTP `200` atau status `2xx` lain.
+
+```json
+{
+  "received": true,
+  "message": "Callback diterima."
+}
+```
+
+Jika endpoint Anda membalas non-`2xx` atau timeout, callback akan dianggap gagal dan akan dijadwalkan ulang otomatis.
 
 ### Retry Callback
 
-Saat ini callback async memakai retry backoff:
+Jika callback gagal, sistem akan mencoba lagi dengan backoff berikut:
 
 - attempt 1 -> delay `60` detik
 - attempt 2 -> delay `300` detik
 - attempt 3 -> delay `900` detik
-
-Jika semua retry gagal, status callback akan tetap tercatat pada log operasional dashboard.
 
 ## Error Reference
 

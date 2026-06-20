@@ -956,17 +956,27 @@ Accept: application/json</code></pre>
                         </section>
 
                         <section class="section">
-                            <h2>Callback Forwarding ke Project Asal</h2>
+                            <h2>Callback untuk Sistem Anda</h2>
                             <p>
-                                Setelah webhook Midtrans valid diproses, <code class="inline-code">payment.naeva.id</code> akan
-                                mengirim callback ke <code class="inline-code">custom_callback_url</code> atau
-                                <code class="inline-code">default_callback_url</code> project.
+                                Bagian ini ditulis untuk pengguna layanan <code class="inline-code">payment.naeva.id</code>, yaitu tim
+                                yang ingin menghubungkan sistem mereka ke callback dari service payment.
                             </p>
 
-                            <h3>Example request method dan target</h3>
-                            <pre class="code-block"><code>POST https://client-app.example.com/api/payment/callback</code></pre>
+                            <h3>Yang perlu Anda siapkan</h3>
+                            <ul>
+                                <li>Buat endpoint <code class="inline-code">POST</code> di server Anda, misalnya <code class="inline-code">https://client-app.example.com/api/payment/callback</code>.</li>
+                                <li>Simpan <code class="inline-code">App ID</code> dan <code class="inline-code">Secret Key</code> project Anda dari dashboard.</li>
+                                <li>Isi <code class="inline-code">default_callback_url</code> pada project, atau kirim <code class="inline-code">custom_callback_url</code> saat membuat charge.</li>
+                                <li>Pastikan endpoint Anda bisa menerima request JSON dan membalas HTTP <code class="inline-code">2xx</code> saat sukses.</li>
+                            </ul>
 
-                            <h3>Header callback</h3>
+                            <p>
+                                Jika Anda mengirim <code class="inline-code">custom_callback_url</code> saat <code class="inline-code">POST /charge</code>,
+                                maka callback transaksi itu akan dikirim ke URL tersebut. Jika tidak, callback akan dikirim ke
+                                <code class="inline-code">default_callback_url</code> project Anda.
+                            </p>
+
+                            <h3>Header yang akan diterima sistem Anda</h3>
                             <pre class="code-block"><code>User-Agent: Naeva-Payment-Callback/1.0
 X-Payment-App-Id: project_a_prod
 X-Payment-Event: payment.status.updated
@@ -977,9 +987,13 @@ X-Payment-Signature: &lt;hmac_sha256_payload_signature&gt;
 Content-Type: application/json
 Accept: application/json</code></pre>
 
-                            <h3>Contoh request mentah callback test</h3>
+                            <h3>Contoh endpoint yang harus Anda siapkan</h3>
+                            <pre class="code-block"><code>POST https://client-app.example.com/api/payment/callback</code></pre>
+
+                            <h3>Contoh request yang akan diterima saat Test Callback URL</h3>
                             <p>
-                                Request ini dipakai saat tombol <code class="inline-code">Test Callback URL</code> dijalankan dari dashboard project.
+                                Saat Anda menekan tombol <code class="inline-code">Test Callback URL</code> di dashboard project, endpoint Anda
+                                akan menerima request seperti ini:
                             </p>
                             <pre class="code-block"><code>POST /api/payment/callback HTTP/1.1
 Host: client-app.example.com
@@ -996,27 +1010,17 @@ Content-Length: 278
 
 {"test":true,"event":"payment.callback.test","message":"This is a callback connectivity test from payment.naeva.id","app_id":"APP-FI4YVWSGZHXN","project_name":"LevelUP adsPRO","callback_url":"https://client-app.example.com/api/payment/callback","sent_at":"2026-06-20 15:00:00"}</code></pre>
 
-                            <h3>Raw body callback test</h3>
+                            <h3>Raw body yang harus Anda verifikasi saat Test Callback URL</h3>
                             <p>
-                                Signature di header dihitung dari body mentah ini, persis apa adanya tanpa tambahan spasi atau format ulang.
+                                Signature dihitung dari body mentah ini. Endpoint Anda harus memverifikasi body apa adanya tanpa
+                                tambahan spasi atau format ulang.
                             </p>
                             <pre class="code-block"><code>{"test":true,"event":"payment.callback.test","message":"This is a callback connectivity test from payment.naeva.id","app_id":"APP-FI4YVWSGZHXN","project_name":"LevelUP adsPRO","callback_url":"https://client-app.example.com/api/payment/callback","sent_at":"2026-06-20 15:00:00"}</code></pre>
 
-                            <h3>Payload callback</h3>
-                            <pre class="code-block"><code>{
-  "order_id": "INV-PROJECTA-2026-001",
-  "gateway_order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
-  "transaction_status": "settlement",
-  "payment_type": "bank_transfer",
-  "gross_amount": 150000,
-  "transaction_time": "2026-06-20 02:30:00",
-  "metadata": {
-    "invoice_id": 1001,
-    "source": "project-a"
-  }
-}</code></pre>
-
-                            <h3>Contoh request mentah callback status transaksi</h3>
+                            <h3>Contoh request status transaksi yang akan diterima sistem Anda</h3>
+                            <p>
+                                Ketika status pembayaran berubah, endpoint Anda akan menerima request seperti ini:
+                            </p>
                             <pre class="code-block"><code>POST /api/payment/callback HTTP/1.1
 Host: client-app.example.com
 User-Agent: Naeva-Payment-Callback/1.0
@@ -1032,16 +1036,14 @@ Content-Length: 284
 
 {"order_id":"INV-PROJECTA-2026-001","gateway_order_id":"PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45","transaction_status":"settlement","payment_type":"bank_transfer","gross_amount":150000,"transaction_time":"2026-06-20 14:30:00","metadata":{"invoice_id":1001,"source":"project-a"}}</code></pre>
 
-                            <h3>Raw body callback status transaksi</h3>
+                            <h3>Raw body status transaksi yang harus Anda verifikasi</h3>
                             <pre class="code-block"><code>{"order_id":"INV-PROJECTA-2026-001","gateway_order_id":"PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45","transaction_status":"settlement","payment_type":"bank_transfer","gross_amount":150000,"transaction_time":"2026-06-20 14:30:00","metadata":{"invoice_id":1001,"source":"project-a"}}</code></pre>
 
-                            <h3>Example response dari endpoint project</h3>
-                            <pre class="code-block"><code>{
-  "received": true,
-  "message": "Callback diterima."
-}</code></pre>
-
-                            <h3>Contoh verifikasi signature di endpoint project</h3>
+                            <h3>Cara verifikasi signature di sistem Anda</h3>
+                            <p>
+                                Gunakan <code class="inline-code">Secret Key</code> project Anda untuk menghitung HMAC dari raw body
+                                request yang diterima.
+                            </p>
                             <pre class="code-block"><code>$rawBody = $request->getContent();
 $expectedSignature = hash_hmac('sha256', $rawBody, $projectSecretKey);
 $receivedSignature = (string) $request->header('X-Payment-Signature');
@@ -1050,9 +1052,27 @@ if (! hash_equals($expectedSignature, $receivedSignature)) {
     abort(401, 'Signature callback payment tidak valid.');
 }</code></pre>
 
+                            <h3>Penyebab umum test callback gagal</h3>
+                            <ul>
+                                <li>Signature dihitung dari array yang sudah diparse lalu di-encode ulang.</li>
+                                <li>Menggunakan secret key yang bukan milik project yang aktif.</li>
+                                <li>Endpoint Anda tidak merespons HTTP <code class="inline-code">2xx</code>.</li>
+                                <li>Endpoint Anda memblokir request dari server <code class="inline-code">payment.naeva.id</code>.</li>
+                            </ul>
+
+                            <h3>Response yang harus dikembalikan endpoint Anda</h3>
+                            <p>
+                                Jika callback berhasil diproses di sistem Anda, balas dengan HTTP <code class="inline-code">200</code> atau
+                                status <code class="inline-code">2xx</code> lain.
+                            </p>
+                            <pre class="code-block"><code>{
+  "received": true,
+  "message": "Callback diterima."
+}</code></pre>
+
                             <div class="success-box">
-                                Callback dengan response HTTP `2xx` dianggap sukses. Response non-`2xx` atau network failure
-                                akan masuk retry async sesuai backoff operasional yang aktif di service.
+                                Jika endpoint Anda membalas non-<code class="inline-code">2xx</code> atau timeout, callback akan dianggap
+                                gagal dan akan dijadwalkan ulang otomatis dengan backoff 60, 300, lalu 900 detik.
                             </div>
                         </section>
 
