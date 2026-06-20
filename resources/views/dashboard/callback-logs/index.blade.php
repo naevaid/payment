@@ -12,7 +12,12 @@
                 <div class="filter-grid">
                     <div class="field">
                         <label for="search">Cari</label>
-                        <input class="input" id="search" type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Callback URL, event type, error">
+                        <input class="input" id="search" type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Callback URL, event type, error, atau App ID">
+                    </div>
+
+                    <div class="field">
+                        <label for="app_id">App ID</label>
+                        <input class="input" id="app_id" type="text" name="app_id" value="{{ $filters['app_id'] ?? '' }}" placeholder="APP-OPS / project_a_prod">
                     </div>
 
                     <div class="field">
@@ -20,7 +25,7 @@
                         <select class="select" id="project_id" name="project_id">
                             <option value="">Semua project</option>
                             @foreach ($projects as $project)
-                                <option value="{{ $project->id }}" @selected((string) ($filters['project_id'] ?? '') === (string) $project->id)>{{ $project->project_name }}</option>
+                                <option value="{{ $project->id }}" @selected((string) ($filters['project_id'] ?? '') === (string) $project->id)>{{ $project->project_name }} ({{ $project->app_id }})</option>
                             @endforeach
                         </select>
                     </div>
@@ -77,6 +82,8 @@
                                 <tr>
                                     <td>
                                         <strong>{{ $log->project?->project_name ?? '-' }}</strong>
+                                        <br>
+                                        <small>{{ $log->project?->app_id ?? '-' }}</small>
                                         <br>
                                         <small>{{ $log->callback_url }}</small>
                                     </td>

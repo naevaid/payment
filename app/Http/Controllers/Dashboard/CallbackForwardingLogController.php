@@ -28,7 +28,7 @@ class CallbackForwardingLogController extends Controller
 
         return view('dashboard.callback-logs.index', [
             'logs' => $logs,
-            'projects' => Project::query()->orderBy('project_name')->get(['id', 'project_name']),
+            'projects' => Project::query()->orderBy('project_name')->get(['id', 'project_name', 'app_id']),
             'filters' => $filters,
         ]);
     }
@@ -45,6 +45,7 @@ class CallbackForwardingLogController extends Controller
 
             fputcsv($handle, [
                 'project_name',
+                'project_app_id',
                 'gateway_order_id',
                 'callback_url',
                 'attempt',
@@ -59,6 +60,7 @@ class CallbackForwardingLogController extends Controller
             $rows->each(function (CallbackForwardingLog $log) use ($handle): void {
                 fputcsv($handle, [
                     $log->project?->project_name,
+                    $log->project?->app_id,
                     $log->transaction?->gateway_order_id,
                     $log->callback_url,
                     $log->attempt,
@@ -125,6 +127,7 @@ class CallbackForwardingLogController extends Controller
     {
         return $request->validate([
             'search' => ['nullable', 'string'],
+            'app_id' => ['nullable', 'string'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'result' => ['nullable', 'in:success,failed'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
@@ -144,7 +147,15 @@ class CallbackForwardingLogController extends Controller
                     $subQuery
                         ->where('callback_url', 'like', "%{$search}%")
                         ->orWhere('event_type', 'like', "%{$search}%")
-                        ->orWhere('error_message', 'like', "%{$search}%");
+                        ->orWhere('error_message', 'like', "%{$search}%")
+                        ->orWhereHas('project', function ($projectQuery) use ($search): void {
+                            $projectQuery->where('app_id', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($filters['app_id'] ?? null, function ($query, string $appId): void {
+                $query->whereHas('project', function ($projectQuery) use ($appId): void {
+                    $projectQuery->where('app_id', 'like', "%{$appId}%");
                 });
             })
             ->when($filters['project_id'] ?? null, fn ($query, $projectId) => $query->where('project_id', $projectId))

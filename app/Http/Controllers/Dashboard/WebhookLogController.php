@@ -25,7 +25,7 @@ class WebhookLogController extends Controller
 
         return view('dashboard.webhook-logs.index', [
             'logs' => $logs,
-            'projects' => Project::query()->orderBy('project_name')->get(['id', 'project_name']),
+            'projects' => Project::query()->orderBy('project_name')->get(['id', 'project_name', 'app_id']),
             'filters' => $filters,
         ]);
     }
@@ -44,6 +44,7 @@ class WebhookLogController extends Controller
                 'order_id',
                 'midtrans_transaction_id',
                 'project_name',
+                'project_app_id',
                 'transaction_status',
                 'is_signature_valid',
                 'processing_status',
@@ -56,6 +57,7 @@ class WebhookLogController extends Controller
                     $log->order_id,
                     $log->midtrans_transaction_id,
                     $log->transaction?->project?->project_name,
+                    $log->transaction?->project?->app_id,
                     $log->transaction_status,
                     $log->is_signature_valid ? 'true' : 'false',
                     $log->processing_status,
@@ -86,6 +88,7 @@ class WebhookLogController extends Controller
     {
         return $request->validate([
             'search' => ['nullable', 'string'],
+            'app_id' => ['nullable', 'string'],
             'project_id' => ['nullable', 'integer', 'exists:projects,id'],
             'signature' => ['nullable', 'in:valid,invalid'],
             'date_from' => ['nullable', 'date_format:Y-m-d'],
@@ -105,7 +108,15 @@ class WebhookLogController extends Controller
                     $subQuery
                         ->where('order_id', 'like', "%{$search}%")
                         ->orWhere('midtrans_transaction_id', 'like', "%{$search}%")
-                        ->orWhere('transaction_status', 'like', "%{$search}%");
+                        ->orWhere('transaction_status', 'like', "%{$search}%")
+                        ->orWhereHas('transaction.project', function ($projectQuery) use ($search): void {
+                            $projectQuery->where('app_id', 'like', "%{$search}%");
+                        });
+                });
+            })
+            ->when($filters['app_id'] ?? null, function ($query, string $appId): void {
+                $query->whereHas('transaction.project', function ($projectQuery) use ($appId): void {
+                    $projectQuery->where('app_id', 'like', "%{$appId}%");
                 });
             })
             ->when($filters['project_id'] ?? null, function ($query, int $projectId): void {

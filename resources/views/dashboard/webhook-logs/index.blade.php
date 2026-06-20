@@ -12,7 +12,12 @@
                 <div class="filter-grid">
                     <div class="field">
                         <label for="search">Cari</label>
-                        <input class="input" id="search" type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Order ID, Midtrans ID, status">
+                        <input class="input" id="search" type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="Order ID, Midtrans ID, status, atau App ID">
+                    </div>
+
+                    <div class="field">
+                        <label for="app_id">App ID</label>
+                        <input class="input" id="app_id" type="text" name="app_id" value="{{ $filters['app_id'] ?? '' }}" placeholder="APP-OPS / project_a_prod">
                     </div>
 
                     <div class="field">
@@ -20,7 +25,7 @@
                         <select class="select" id="project_id" name="project_id">
                             <option value="">Semua project</option>
                             @foreach ($projects as $project)
-                                <option value="{{ $project->id }}" @selected((string) ($filters['project_id'] ?? '') === (string) $project->id)>{{ $project->project_name }}</option>
+                                <option value="{{ $project->id }}" @selected((string) ($filters['project_id'] ?? '') === (string) $project->id)>{{ $project->project_name }} ({{ $project->app_id }})</option>
                             @endforeach
                         </select>
                     </div>
@@ -80,7 +85,11 @@
                                         <br>
                                         <small>{{ $log->midtrans_transaction_id ?? '-' }}</small>
                                     </td>
-                                    <td>{{ $log->transaction?->project?->project_name ?? '-' }}</td>
+                                    <td>
+                                        {{ $log->transaction?->project?->project_name ?? '-' }}
+                                        <br>
+                                        <small>{{ $log->transaction?->project?->app_id ?? '-' }}</small>
+                                    </td>
                                     <td><span class="badge badge-primary">{{ $log->transaction_status ?? '-' }}</span></td>
                                     <td>
                                         <span class="badge {{ $log->is_signature_valid ? 'badge-success' : 'badge-danger' }}">

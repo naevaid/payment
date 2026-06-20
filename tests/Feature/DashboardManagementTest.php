@@ -394,6 +394,141 @@ class DashboardManagementTest extends TestCase
         $this->assertStringNotContainsString('APP-BILLING-BETA', $exportResponse->streamedContent());
     }
 
+    public function test_authenticated_user_can_filter_webhook_and_callback_logs_by_app_id_and_export_csv(): void
+    {
+        $user = User::factory()->create();
+
+        $opsProject = Project::create([
+            'app_id' => 'APP-OPS-GAMMA',
+            'project_name' => 'Ops Gamma',
+            'secret_key' => 'ops-gamma-secret-1234',
+            'default_callback_url' => 'https://ops-gamma.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $billingProject = Project::create([
+            'app_id' => 'APP-BILLING-DELTA',
+            'project_name' => 'Billing Delta',
+            'secret_key' => 'billing-delta-secret-1234',
+            'default_callback_url' => 'https://billing-delta.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $opsTransaction = Transaction::create([
+            'project_id' => $opsProject->id,
+            'gateway_order_id' => 'GW-WH-OPS-001',
+            'client_order_id' => 'CLIENT-WH-OPS-001',
+            'amount' => 135000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Pending,
+            'callback_status' => CallbackStatus::Queued,
+            'callback_url' => 'https://ops-gamma.naeva.id/payment/callback',
+        ]);
+
+        $billingTransaction = Transaction::create([
+            'project_id' => $billingProject->id,
+            'gateway_order_id' => 'GW-WH-BILLING-001',
+            'client_order_id' => 'CLIENT-WH-BILLING-001',
+            'amount' => 246000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Settlement,
+            'callback_status' => CallbackStatus::Success,
+            'callback_url' => 'https://billing-delta.naeva.id/payment/callback',
+        ]);
+
+        MidtransWebhookLog::create([
+            'transaction_id' => $opsTransaction->id,
+            'order_id' => 'GW-WH-OPS-001',
+            'midtrans_transaction_id' => 'MID-WH-OPS-001',
+            'transaction_status' => 'pending',
+            'signature_key' => 'signature-ops',
+            'payload' => ['status' => 'pending'],
+            'headers' => ['x-source' => 'test'],
+            'is_signature_valid' => true,
+            'processing_status' => 'received',
+            'received_at' => now(),
+        ]);
+
+        MidtransWebhookLog::create([
+            'transaction_id' => $billingTransaction->id,
+            'order_id' => 'GW-WH-BILLING-001',
+            'midtrans_transaction_id' => 'MID-WH-BILLING-001',
+            'transaction_status' => 'settlement',
+            'signature_key' => 'signature-billing',
+            'payload' => ['status' => 'settlement'],
+            'headers' => ['x-source' => 'test'],
+            'is_signature_valid' => true,
+            'processing_status' => 'processed',
+            'received_at' => now(),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $opsTransaction->id,
+            'project_id' => $opsProject->id,
+            'callback_url' => 'https://ops-gamma.naeva.id/payment/callback',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['status' => 'pending'],
+            'request_headers' => ['X-Signature' => 'ops'],
+            'response_status_code' => 500,
+            'response_body' => 'error',
+            'success' => false,
+            'error_message' => 'HTTP 500',
+            'dispatched_at' => now(),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $billingTransaction->id,
+            'project_id' => $billingProject->id,
+            'callback_url' => 'https://billing-delta.naeva.id/payment/callback',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['status' => 'settlement'],
+            'request_headers' => ['X-Signature' => 'billing'],
+            'response_status_code' => 200,
+            'response_body' => 'ok',
+            'success' => true,
+            'dispatched_at' => now(),
+            'responded_at' => now(),
+        ]);
+
+        $filters = [
+            'app_id' => 'APP-OPS',
+        ];
+
+        $webhookResponse = $this->actingAs($user)->get(route('dashboard.webhook-logs.index', $filters));
+
+        $webhookResponse->assertOk()
+            ->assertSee('GW-WH-OPS-001')
+            ->assertSee('APP-OPS-GAMMA')
+            ->assertDontSee('GW-WH-BILLING-001')
+            ->assertDontSee('MID-WH-BILLING-001');
+
+        $webhookExport = $this->actingAs($user)->get(route('dashboard.webhook-logs.export', $filters));
+
+        $webhookExport->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $webhookExport->headers->get('content-type'));
+        $this->assertStringContainsString('project_app_id', $webhookExport->streamedContent());
+        $this->assertStringContainsString('APP-OPS-GAMMA', $webhookExport->streamedContent());
+        $this->assertStringNotContainsString('APP-BILLING-DELTA', $webhookExport->streamedContent());
+
+        $callbackResponse = $this->actingAs($user)->get(route('dashboard.callback-logs.index', $filters));
+
+        $callbackResponse->assertOk()
+            ->assertSee('Ops Gamma')
+            ->assertSee('APP-OPS-GAMMA')
+            ->assertSee('https://ops-gamma.naeva.id/payment/callback')
+            ->assertDontSee('https://billing-delta.naeva.id/payment/callback');
+
+        $callbackExport = $this->actingAs($user)->get(route('dashboard.callback-logs.export', $filters));
+
+        $callbackExport->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $callbackExport->headers->get('content-type'));
+        $this->assertStringContainsString('project_app_id', $callbackExport->streamedContent());
+        $this->assertStringContainsString('APP-OPS-GAMMA', $callbackExport->streamedContent());
+        $this->assertStringNotContainsString('APP-BILLING-DELTA', $callbackExport->streamedContent());
+    }
+
     public function test_authenticated_user_can_retry_failed_callback_from_dashboard(): void
     {
         Queue::fake();
