@@ -6,10 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Project;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class ProjectController extends Controller
 {
@@ -159,6 +161,82 @@ class ProjectController extends Controller
             ]);
     }
 
+    public function testCallback(Request $request, Project $project): RedirectResponse
+    {
+        $validated = $request->validate([
+            'app_id' => ['nullable', 'string', 'max:255'],
+            'secret_key' => ['nullable', 'string', 'max:255'],
+            'callback_url' => ['nullable', 'url', 'max:2048'],
+        ]);
+
+        $callbackUrl = $validated['callback_url'] ?? $project->default_callback_url;
+
+        if (blank($callbackUrl)) {
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'default_callback_url' => 'Isi callback URL terlebih dahulu sebelum menjalankan test.',
+                ]);
+        }
+
+        $appId = filled($validated['app_id'] ?? null) ? $validated['app_id'] : $project->app_id;
+        $secretKey = filled($validated['secret_key'] ?? null) ? $validated['secret_key'] : $project->secret_key;
+        $testedAt = now();
+        $payload = $this->buildCallbackTestPayload($project, $appId, $callbackUrl, $testedAt);
+        $headers = $this->buildCallbackTestHeaders($appId, $secretKey, $payload, $testedAt);
+
+        try {
+            $response = Http::acceptJson()
+                ->asJson()
+                ->timeout((int) config('payment.callback.timeout_seconds', 10))
+                ->withHeaders($headers)
+                ->post($callbackUrl, $payload);
+
+            $result = [
+                'success' => $response->successful(),
+                'app_id' => $appId,
+                'callback_url' => $callbackUrl,
+                'status_code' => $response->status(),
+                'response_body' => Str::limit($response->body(), 1000),
+                'tested_at' => $testedAt->format('d M Y H:i:s'),
+                'delivery_id' => $headers['X-Payment-Delivery-Id'],
+                'event_type' => $headers['X-Payment-Event'],
+            ];
+
+            $redirect = back()
+                ->withInput()
+                ->with('callback_test', $result);
+
+            if ($response->successful()) {
+                return $redirect->with(
+                    'status',
+                    'Test callback berhasil. Endpoint membalas HTTP '.$response->status().'.'
+                );
+            }
+
+            return $redirect->withErrors([
+                'default_callback_url' => 'Test callback gagal. Endpoint membalas HTTP '.$response->status().'.',
+            ]);
+        } catch (Throwable $exception) {
+            return back()
+                ->withInput()
+                ->with('callback_test', [
+                    'success' => false,
+                    'app_id' => $appId,
+                    'callback_url' => $callbackUrl,
+                    'status_code' => null,
+                    'response_body' => null,
+                    'tested_at' => $testedAt->format('d M Y H:i:s'),
+                    'delivery_id' => $headers['X-Payment-Delivery-Id'],
+                    'event_type' => $headers['X-Payment-Event'],
+                    'error_message' => $exception->getMessage(),
+                ])
+                ->withErrors([
+                    'default_callback_url' => 'Test callback gagal dikirim: '.$exception->getMessage(),
+                ]);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -218,5 +296,50 @@ class ProjectController extends Controller
     protected function generateSecretKey(): string
     {
         return Str::random(48);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected function buildCallbackTestPayload(
+        Project $project,
+        string $appId,
+        string $callbackUrl,
+        \Illuminate\Support\Carbon $testedAt,
+    ): array {
+        return [
+            'test' => true,
+            'event' => 'payment.callback.test',
+            'message' => 'This is a callback connectivity test from payment.naeva.id',
+            'app_id' => $appId,
+            'project_name' => $project->project_name,
+            'callback_url' => $callbackUrl,
+            'sent_at' => $testedAt->toDateTimeString(),
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, string>
+     */
+    protected function buildCallbackTestHeaders(
+        string $appId,
+        string $secretKey,
+        array $payload,
+        \Illuminate\Support\Carbon $testedAt,
+    ): array {
+        return [
+            'User-Agent' => (string) config('payment.callback.user_agent'),
+            'X-Payment-App-Id' => $appId,
+            'X-Payment-Event' => 'payment.callback.test',
+            'X-Payment-Attempt' => '1',
+            'X-Payment-Timestamp' => (string) $testedAt->timestamp,
+            'X-Payment-Delivery-Id' => (string) Str::uuid(),
+            'X-Payment-Signature' => hash_hmac(
+                'sha256',
+                json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '',
+                $secretKey,
+            ),
+        ];
     }
 }

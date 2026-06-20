@@ -179,7 +179,7 @@ Accept: application/json
   "data": {
     "app_id": "project_a_prod",
     "project_name": "Project A",
-    "default_callback_url": "https://project-a.naeva.id/payment/callback",
+    "default_callback_url": "https://client-app.example.com/payment/callback",
     "is_active": true,
     "authentication": {
       "mode": "hmac_signature",
@@ -208,7 +208,7 @@ Accept: application/json
       }
     },
     "callback": {
-      "default_url": "https://project-a.naeva.id/payment/callback",
+      "default_url": "https://client-app.example.com/payment/callback",
       "retry": {
         "queue": "payment-callbacks",
         "timeout_seconds": 10,
@@ -296,7 +296,7 @@ Accept: application/json
       "name": "Invoice Payment"
     }
   ],
-  "custom_callback_url": "https://project-a.naeva.id/api/payment/notification",
+  "custom_callback_url": "https://client-app.example.com/api/payment/notification",
   "metadata": {
     "invoice_id": 1001,
     "source": "project-a"
@@ -375,7 +375,7 @@ Contoh:
     "callback_status": "queued",
     "payment_type": "bank_transfer",
     "redirect_url": "https://midtrans.test/snap/lookup-001",
-    "callback_url": "https://project-lookup.test/api/payment/callback",
+    "callback_url": "https://client-app.example.com/api/payment/callback",
     "metadata": {
       "invoice_id": 7001
     },
@@ -400,7 +400,7 @@ Contoh:
     "latest_callback": {
       "attempt": 1,
       "event_type": "payment.status.updated",
-      "callback_url": "https://project-lookup.test/api/payment/callback",
+      "callback_url": "https://client-app.example.com/api/payment/callback",
       "success": false,
       "response_status_code": 500,
       "error_message": "HTTP 500",
@@ -441,7 +441,7 @@ Accept: application/json
     "callback_status": "queued",
     "payment_type": "bank_transfer",
     "redirect_url": "https://app.midtrans.com/snap/v2/vtweb/snap-token-xyz",
-    "callback_url": "https://project-a.naeva.id/api/payment/notification",
+    "callback_url": "https://client-app.example.com/api/payment/notification",
     "metadata": {
       "invoice_id": 1001
     },
@@ -465,7 +465,7 @@ Accept: application/json
     "latest_callback": {
       "attempt": 1,
       "event_type": "payment.status.updated",
-      "callback_url": "https://project-a.naeva.id/api/payment/notification",
+      "callback_url": "https://client-app.example.com/api/payment/notification",
       "success": false,
       "response_status_code": 500,
       "error_message": "HTTP 500",

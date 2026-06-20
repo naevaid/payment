@@ -30,6 +30,12 @@
     </div>
 </div>
 
+@if ($project->exists)
+    <div class="field">
+        <span class="muted">Gunakan tombol test untuk memastikan endpoint callback aktif dan bisa menerima request dari `payment.naeva.id` sebelum perubahan disimpan.</span>
+    </div>
+@endif
+
 <div class="field">
     <label for="metadata_json">Metadata JSON</label>
     <textarea class="textarea" id="metadata_json" name="metadata_json" placeholder='{"team":"finance","channel":"internal"}'>{{ $metadataJson }}</textarea>
@@ -44,5 +50,13 @@
 
 <div class="button-row">
     <button class="button button-primary" type="submit">{{ $submitLabel }}</button>
+    @if ($project->exists)
+        <button
+            class="button"
+            type="button"
+            data-project-callback-test-trigger
+            data-project-callback-test-form="#project-callback-test-form"
+        >Test Callback URL</button>
+    @endif
     <a class="button" href="{{ route('dashboard.projects.index') }}">Kembali</a>
 </div>

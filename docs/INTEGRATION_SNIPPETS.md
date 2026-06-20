@@ -24,7 +24,7 @@ Contoh:
 PAYMENT_BASE_URL=https://payment.naeva.id
 PAYMENT_APP_ID=project_a_prod
 PAYMENT_SECRET_KEY=replace-with-real-secret
-PAYMENT_CALLBACK_URL=https://project-a.naeva.id/api/payment/notification
+PAYMENT_CALLBACK_URL=https://client-app.example.com/api/payment/notification
 ```
 
 ## String to Sign

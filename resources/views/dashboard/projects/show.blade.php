@@ -25,6 +25,54 @@
         };
     @endphp
 
+    @if (session('callback_test'))
+        @php($callbackTest = session('callback_test'))
+        <section class="panel">
+            <div class="panel-body">
+                <div class="panel-heading">
+                    <div>
+                        <h2>Hasil test callback URL</h2>
+                        <p>Request uji dikirim langsung dari `payment.naeva.id` ke endpoint callback project ini.</p>
+                    </div>
+                </div>
+
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <strong>Status</strong>
+                        <span>{{ $callbackTest['success'] ? 'Berhasil' : 'Gagal' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Callback URL</strong>
+                        <span><code>{{ $callbackTest['callback_url'] }}</code></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>App ID</strong>
+                        <span><code>{{ $callbackTest['app_id'] }}</code></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Event</strong>
+                        <span><code>{{ $callbackTest['event_type'] }}</code></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>Delivery ID</strong>
+                        <span><code>{{ $callbackTest['delivery_id'] }}</code></span>
+                    </div>
+                    <div class="detail-item">
+                        <strong>HTTP Status</strong>
+                        <span>{{ $callbackTest['status_code'] ?? '-' }}</span>
+                    </div>
+                </div>
+
+                @if (filled($callbackTest['response_body'] ?? null))
+                    <div class="field" style="margin-top: 18px;">
+                        <label>Response body</label>
+                        <pre class="code-block">{{ $callbackTest['response_body'] }}</pre>
+                    </div>
+                @endif
+            </div>
+        </section>
+    @endif
+
     @if (session('generated_credentials'))
         <section class="panel">
             <div class="panel-body">
@@ -134,6 +182,12 @@
                     </div>
 
                     <div class="button-row">
+                        <form class="inline-form" method="POST" action="{{ route('dashboard.projects.test-callback', $project) }}">
+                            @csrf
+                            <input type="hidden" name="callback_url" value="{{ $project->default_callback_url }}">
+                            <button class="button" type="submit">Test Callback URL</button>
+                        </form>
+
                         <form class="inline-form" method="POST" action="{{ route('dashboard.projects.regenerate-app-id', $project) }}" onsubmit="return confirm('Regenerasi App ID project ini? Client app perlu diperbarui setelahnya.');">
                             @csrf
                             <button class="button" type="submit">Regenerate App ID</button>

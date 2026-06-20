@@ -62,6 +62,7 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::resource('/dashboard/projects', ProjectController::class)->names('dashboard.projects');
+    Route::post('/dashboard/projects/{project}/test-callback', [ProjectController::class, 'testCallback'])->name('dashboard.projects.test-callback');
     Route::post('/dashboard/projects/{project}/regenerate-app-id', [ProjectController::class, 'regenerateAppId'])->name('dashboard.projects.regenerate-app-id');
     Route::post('/dashboard/projects/{project}/regenerate-secret-key', [ProjectController::class, 'regenerateSecretKey'])->name('dashboard.projects.regenerate-secret-key');
     Route::get('/dashboard/transactions', [TransactionController::class, 'index'])->name('dashboard.transactions.index');

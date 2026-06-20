@@ -503,7 +503,7 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
   "data": {
     "app_id": "project_a_prod",
     "project_name": "Project A",
-    "default_callback_url": "https://project-a.naeva.id/payment/callback",
+    "default_callback_url": "https://client-app.example.com/payment/callback",
     "is_active": true,
     "authentication": {
       "mode": "hmac_signature",
@@ -568,7 +568,7 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
       "name": "Invoice Payment"
     }
   ],
-  "custom_callback_url": "https://project-a.naeva.id/api/payment/notification",
+  "custom_callback_url": "https://client-app.example.com/api/payment/notification",
   "metadata": {
     "invoice_id": 1001,
     "source": "project-a"
@@ -613,7 +613,7 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
     "callback_status": "queued",
     "payment_type": "bank_transfer",
     "redirect_url": "https://midtrans.test/snap/lookup-001",
-    "callback_url": "https://project-lookup.test/api/payment/callback",
+    "callback_url": "https://client-app.example.com/api/payment/callback",
     "latest_webhook": {
       "processing_status": "processed",
       "is_signature_valid": true
@@ -649,7 +649,7 @@ $signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
     "callback_status": "queued",
     "payment_type": "bank_transfer",
     "redirect_url": "https://app.midtrans.com/snap/v2/vtweb/snap-token-xyz",
-    "callback_url": "https://project-a.naeva.id/api/payment/notification",
+    "callback_url": "https://client-app.example.com/api/payment/notification",
     "timestamps": {
       "last_webhook_at": "2026-06-20 02:29:00"
     },

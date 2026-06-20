@@ -152,6 +152,29 @@
                         return;
                     }
 
+                    const callbackTestTrigger = event.target.closest('[data-project-callback-test-trigger]');
+
+                    if (callbackTestTrigger) {
+                        const sourceForm = callbackTestTrigger.closest('form');
+                        const targetSelector = callbackTestTrigger.getAttribute('data-project-callback-test-form');
+                        const targetForm = targetSelector ? document.querySelector(targetSelector) : null;
+
+                        if (!sourceForm || !targetForm) {
+                            return;
+                        }
+
+                        const appIdInput = sourceForm.querySelector('#app_id');
+                        const secretKeyInput = sourceForm.querySelector('#secret_key');
+                        const callbackUrlInput = sourceForm.querySelector('#default_callback_url');
+
+                        targetForm.querySelector('[name="app_id"]').value = appIdInput?.value ?? '';
+                        targetForm.querySelector('[name="secret_key"]').value = secretKeyInput?.value ?? '';
+                        targetForm.querySelector('[name="callback_url"]').value = callbackUrlInput?.value ?? '';
+                        targetForm.submit();
+
+                        return;
+                    }
+
                     const copyButton = event.target.closest('[data-secret-copy]');
 
                     if (!copyButton) {

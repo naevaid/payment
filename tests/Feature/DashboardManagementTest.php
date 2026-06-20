@@ -12,6 +12,7 @@ use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -94,6 +95,53 @@ class DashboardManagementTest extends TestCase
             ->assertOk()
             ->assertSee('aria-label="Lihat secret key"', false)
             ->assertSee('aria-label="Salin secret key"', false);
+    }
+
+    public function test_authenticated_user_can_test_project_callback_url_from_dashboard(): void
+    {
+        Http::fake([
+            'https://client-app.example.com/payment/callback-test' => Http::response([
+                'ok' => true,
+                'message' => 'callback received',
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'app_id' => 'APP-CALLBACK-TEST',
+            'project_name' => 'Callback Test Project',
+            'secret_key' => 'callback-test-project-secret-1234',
+            'default_callback_url' => 'https://client-app.example.com/payment/callback-default',
+            'is_active' => true,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->from(route('dashboard.projects.edit', $project))
+            ->post(route('dashboard.projects.test-callback', $project), [
+                'app_id' => 'APP-CALLBACK-TEST',
+                'callback_url' => 'https://client-app.example.com/payment/callback-test',
+            ]);
+
+        $response->assertRedirect(route('dashboard.projects.edit', $project));
+        $response->assertSessionHas('status', 'Test callback berhasil. Endpoint membalas HTTP 200.');
+        $response->assertSessionHas('callback_test', function (array $callbackTest): bool {
+            return $callbackTest['success'] === true
+                && $callbackTest['app_id'] === 'APP-CALLBACK-TEST'
+                && $callbackTest['callback_url'] === 'https://client-app.example.com/payment/callback-test'
+                && $callbackTest['status_code'] === 200
+                && $callbackTest['event_type'] === 'payment.callback.test';
+        });
+
+        Http::assertSent(function ($request): bool {
+            return $request->url() === 'https://client-app.example.com/payment/callback-test'
+                && $request->method() === 'POST'
+                && $request->hasHeader('X-Payment-App-Id', 'APP-CALLBACK-TEST')
+                && $request->hasHeader('X-Payment-Event', 'payment.callback.test')
+                && $request->data()['test'] === true
+                && $request->data()['app_id'] === 'APP-CALLBACK-TEST'
+                && $request->data()['callback_url'] === 'https://client-app.example.com/payment/callback-test';
+        });
     }
 
     public function test_authenticated_user_can_view_operational_dashboard_pages(): void

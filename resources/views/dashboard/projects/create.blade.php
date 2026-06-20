@@ -8,6 +8,10 @@
 @section('content')
     <section class="panel">
         <div class="panel-body">
+            <div class="alert alert-success" style="margin-bottom: 18px;">
+                Simpan project terlebih dahulu untuk menjalankan test callback URL dari server `payment.naeva.id`.
+            </div>
+
             <form method="POST" action="{{ route('dashboard.projects.store') }}">
                 @csrf
                 @php($submitLabel = 'Simpan project')
