@@ -331,6 +331,69 @@ class DashboardManagementTest extends TestCase
         $this->assertStringNotContainsString('https://filter.naeva.id/payment/callback/old', $callbackExport->streamedContent());
     }
 
+    public function test_authenticated_user_can_filter_transactions_by_app_id_and_export_csv(): void
+    {
+        $user = User::factory()->create();
+
+        $opsProject = Project::create([
+            'app_id' => 'APP-OPS-ALPHA',
+            'project_name' => 'Ops Alpha',
+            'secret_key' => 'ops-alpha-secret-1234',
+            'default_callback_url' => 'https://ops-alpha.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $billingProject = Project::create([
+            'app_id' => 'APP-BILLING-BETA',
+            'project_name' => 'Billing Beta',
+            'secret_key' => 'billing-beta-secret-1234',
+            'default_callback_url' => 'https://billing-beta.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        Transaction::create([
+            'project_id' => $opsProject->id,
+            'gateway_order_id' => 'GW-OPS-001',
+            'client_order_id' => 'CLIENT-OPS-001',
+            'amount' => 110000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Pending,
+            'callback_status' => CallbackStatus::Queued,
+            'callback_url' => 'https://ops-alpha.naeva.id/payment/callback',
+        ]);
+
+        Transaction::create([
+            'project_id' => $billingProject->id,
+            'gateway_order_id' => 'GW-BILLING-001',
+            'client_order_id' => 'CLIENT-BILLING-001',
+            'amount' => 215000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Settlement,
+            'callback_status' => CallbackStatus::Success,
+            'callback_url' => 'https://billing-beta.naeva.id/payment/callback',
+        ]);
+
+        $filters = [
+            'app_id' => 'APP-OPS',
+        ];
+
+        $response = $this->actingAs($user)->get(route('dashboard.transactions.index', $filters));
+
+        $response->assertOk()
+            ->assertSee('GW-OPS-001')
+            ->assertSee('APP-OPS-ALPHA')
+            ->assertDontSee('GW-BILLING-001')
+            ->assertDontSee('CLIENT-BILLING-001');
+
+        $exportResponse = $this->actingAs($user)->get(route('dashboard.transactions.export', $filters));
+
+        $exportResponse->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $exportResponse->headers->get('content-type'));
+        $this->assertStringContainsString('project_app_id', $exportResponse->streamedContent());
+        $this->assertStringContainsString('APP-OPS-ALPHA', $exportResponse->streamedContent());
+        $this->assertStringNotContainsString('APP-BILLING-BETA', $exportResponse->streamedContent());
+    }
+
     public function test_authenticated_user_can_retry_failed_callback_from_dashboard(): void
     {
         Queue::fake();
