@@ -206,6 +206,8 @@ class ChargeApiTest extends TestCase
 
         $response->assertConflict()
             ->assertJsonPath('message', 'Order ID sudah pernah digunakan dengan payload yang berbeda.')
+            ->assertJsonPath('error.code', 'order_id_conflict')
+            ->assertJsonPath('error.status', 409)
             ->assertJsonPath('existing_transaction.order_id', 'INV-CONFLICT-001');
 
         $this->assertDatabaseCount('transactions', 1);
@@ -239,7 +241,9 @@ class ChargeApiTest extends TestCase
         ]);
 
         $response->assertUnauthorized()
-            ->assertJsonPath('message', 'Invalid project request signature.');
+            ->assertJsonPath('message', 'Invalid project request signature.')
+            ->assertJsonPath('error.code', 'invalid_project_signature')
+            ->assertJsonPath('error.status', 401);
     }
 
     public function test_inactive_project_cannot_create_charge_even_with_valid_signature(): void
@@ -273,7 +277,9 @@ class ChargeApiTest extends TestCase
         );
 
         $response->assertForbidden()
-            ->assertJsonPath('message', 'Project is inactive.');
+            ->assertJsonPath('message', 'Project is inactive.')
+            ->assertJsonPath('error.code', 'project_inactive')
+            ->assertJsonPath('error.status', 403);
 
         $this->assertDatabaseCount('transactions', 0);
     }
@@ -409,6 +415,31 @@ class ChargeApiTest extends TestCase
             ->assertJsonPath('data.latest_callback.attempt', 1)
             ->assertJsonPath('data.latest_callback.success', false)
             ->assertJsonPath('data.latest_callback.response_status_code', 500);
+    }
+
+    public function test_transaction_lookup_returns_standard_not_found_error(): void
+    {
+        $project = Project::create([
+            'app_id' => 'project_lookup_404_prod',
+            'project_name' => 'Project Lookup 404',
+            'secret_key' => 'secret-lookup-404-123',
+            'default_callback_url' => 'https://project-lookup-404.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/transactions/UNKNOWN-ORDER-001',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get('/api/v1/transactions/UNKNOWN-ORDER-001', $headers);
+
+        $response->assertNotFound()
+            ->assertJsonPath('message', 'Resource not found.')
+            ->assertJsonPath('error.code', 'resource_not_found')
+            ->assertJsonPath('error.status', 404);
     }
 
     public function test_project_can_lookup_transaction_with_auto_identifier_mode(): void
@@ -668,7 +699,54 @@ class ChargeApiTest extends TestCase
         );
 
         $response->assertUnauthorized()
-            ->assertJsonPath('message', 'Invalid project request signature.');
+            ->assertJsonPath('message', 'Invalid project request signature.')
+            ->assertJsonPath('error.code', 'invalid_project_signature')
+            ->assertJsonPath('error.status', 401);
+    }
+
+    public function test_charge_validation_error_uses_standard_api_error_shape(): void
+    {
+        config([
+            'payment.auth.allow_legacy_secret_header' => false,
+        ]);
+
+        $project = Project::create([
+            'app_id' => 'project_validation_prod',
+            'project_name' => 'Project Validation',
+            'secret_key' => 'secret-validation-123',
+            'default_callback_url' => 'https://project-validation.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $payload = [
+            'order_id' => '',
+            'gross_amount' => 0,
+            'customer_details' => [],
+        ];
+
+        $timestamp = (string) now()->timestamp;
+
+        $response = $this->postJson(
+            '/api/v1/charge',
+            $payload,
+            $this->signedHeaders($project, $payload, $timestamp),
+        );
+
+        $errors = $response->json('error.details.errors');
+
+        $response->assertUnprocessable()
+            ->assertJsonPath('message', 'The given data was invalid.')
+            ->assertJsonPath('error.code', 'validation_failed')
+            ->assertJsonPath('error.status', 422)
+            ->assertJsonPath('error.details.errors.order_id.0', 'The order id field is required.')
+            ->assertJsonPath('error.details.errors.gross_amount.0', 'The gross amount field must be at least 1.');
+
+        $this->assertIsArray($errors);
+        $this->assertArrayHasKey('customer_details.first_name', $errors);
+        $this->assertSame(
+            'The customer details.first name field is required.',
+            $errors['customer_details.first_name'][0] ?? null,
+        );
     }
 
     /**

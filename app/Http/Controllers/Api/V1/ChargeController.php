@@ -7,6 +7,7 @@ use App\Http\Requests\StoreChargeRequest;
 use App\Models\Project;
 use App\Models\Transaction;
 use App\Services\MidtransService;
+use App\Support\ApiErrorResponse;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -27,7 +28,11 @@ class ChargeController extends Controller
         if ($existingTransaction) {
             if (! $this->hasSameChargePayload($request, $project, $existingTransaction)) {
                 return response()->json([
-                    'message' => 'Order ID sudah pernah digunakan dengan payload yang berbeda.',
+                    ...ApiErrorResponse::make(
+                        message: 'Order ID sudah pernah digunakan dengan payload yang berbeda.',
+                        code: 'order_id_conflict',
+                        status: JsonResponse::HTTP_CONFLICT,
+                    ),
                     'existing_transaction' => [
                         'gateway_order_id' => $existingTransaction->gateway_order_id,
                         'order_id' => $existingTransaction->client_order_id,
@@ -79,7 +84,11 @@ class ChargeController extends Controller
 
             if (! $this->hasSameChargePayload($request, $project, $raceConditionTransaction)) {
                 return response()->json([
-                    'message' => 'Order ID sudah pernah digunakan dengan payload yang berbeda.',
+                    ...ApiErrorResponse::make(
+                        message: 'Order ID sudah pernah digunakan dengan payload yang berbeda.',
+                        code: 'order_id_conflict',
+                        status: JsonResponse::HTTP_CONFLICT,
+                    ),
                     'existing_transaction' => [
                         'gateway_order_id' => $raceConditionTransaction->gateway_order_id,
                         'order_id' => $raceConditionTransaction->client_order_id,
