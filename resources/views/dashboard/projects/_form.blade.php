@@ -36,10 +36,7 @@
     </div>
 @endif
 
-<div class="field">
-    <label for="metadata_json">Metadata JSON</label>
-    <textarea class="textarea" id="metadata_json" name="metadata_json" placeholder='{"team":"finance","channel":"internal"}'>{{ $metadataJson }}</textarea>
-</div>
+<input id="metadata_json" type="hidden" name="metadata_json" value="{{ $metadataJson }}">
 
 <div class="field">
     <label class="checkbox-row" for="is_active">

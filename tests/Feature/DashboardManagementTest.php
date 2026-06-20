@@ -24,6 +24,11 @@ class DashboardManagementTest extends TestCase
     {
         $user = User::factory()->create();
 
+        $this->actingAs($user)
+            ->get(route('dashboard.projects.create'))
+            ->assertOk()
+            ->assertDontSee('Metadata JSON');
+
         $createResponse = $this->actingAs($user)->post(route('dashboard.projects.store'), [
             'project_name' => 'Billing Internal',
             'app_id' => 'APP-BILLING',
@@ -53,6 +58,11 @@ class DashboardManagementTest extends TestCase
         $this->assertSame('Billing Internal Updated', $project->project_name);
         $this->assertSame('https://billing.naeva.id/payment/callback-v2', $project->default_callback_url);
         $this->assertSame(['team' => 'finance', 'version' => 2], $project->metadata);
+
+        $this->actingAs($user)
+            ->get(route('dashboard.projects.edit', $project))
+            ->assertOk()
+            ->assertDontSee('Metadata JSON');
     }
 
     public function test_authenticated_user_can_regenerate_project_credentials(): void
