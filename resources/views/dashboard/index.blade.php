@@ -42,25 +42,25 @@
         <div class="panel-body">
             <div class="panel-heading">
                 <div>
-                    <h2>Peta menu sesuai PRD</h2>
-                    <p>Sidebar dashboard dibentuk dari kebutuhan operasional yang disebut di PRD dan dipisahkan antara menu aktif saat ini dan roadmap berikutnya.</p>
+                    <h2>Akses Dashboard</h2>
+                    <p>Navigasi utama dirapikan agar fokus ke alat operasional yang benar-benar dipakai setiap hari.</p>
                 </div>
             </div>
 
             <div class="grid grid-3">
                 <div class="summary-card">
-                    <strong>Menu aktif sekarang</strong>
-                    <span>Dashboard overview, Projects / Tenants, Transactions, Webhook Logs, Callback Logs, retry manual callback, dan health queue callback.</span>
+                    <strong>Menu utama</strong>
+                    <span>Dashboard, Projects, Transactions, Webhooks, dan Callbacks menjadi jalur utama untuk operasional harian.</span>
                 </div>
 
                 <div class="summary-card">
-                    <strong>Menu next sesuai PRD</strong>
-                    <span>Penyempurnaan dokumentasi integrasi final dan review penutupan keseluruhan scope PRD.</span>
+                    <strong>Fokus operasional</strong>
+                    <span>Monitoring transaksi, inbound webhook, delivery callback, dan pelaporan owner-level tersedia dari satu dashboard.</span>
                 </div>
 
                 <div class="summary-card">
-                    <strong>Tujuan operasional</strong>
-                    <span>Memusatkan monitoring charge, webhook Midtrans, dan forwarding callback untuk semua project internal Naeva.</span>
+                    <strong>Tujuan</strong>
+                    <span>Memberikan tampilan kontrol yang ringkas untuk seluruh payment flow internal Naeva tanpa elemen roadmap yang tidak bisa dipakai.</span>
                 </div>
             </div>
         </div>

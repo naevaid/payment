@@ -258,6 +258,12 @@ class DashboardManagementTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
+            ->assertSee('Projects')
+            ->assertSee('Webhooks')
+            ->assertSee('Callbacks')
+            ->assertDontSee('Rencana PRD')
+            ->assertDontSee('Projects / Tenants')
+            ->assertDontSee('List global, status, dan detail transaksi')
             ->assertSee('Owner-Level Reporting')
             ->assertSee('Rp 624.000')
             ->assertSee('Rp 170.000')
@@ -270,8 +276,7 @@ class DashboardManagementTest extends TestCase
             ->assertSee('payment-callbacks')
             ->assertSee('GW-FAILED-001')
             ->assertSee('GW-SKIPPED-001')
-            ->assertSee('Retry Manual Callback')
-            ->assertSee('Live');
+            ->assertSee('Retry Manual Callback');
 
         $this->actingAs($user)
             ->get(route('dashboard.transactions.index'))

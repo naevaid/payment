@@ -18,91 +18,45 @@
                     <span class="brand-badge">N</span>
                     <span class="brand-copy">
                         <strong>payment.naeva.id</strong>
-                        <span>Centralized payment gateway</span>
+                        <span>Dashboard internal</span>
                     </span>
                 </a>
 
                 <div class="sidebar-section">
-                    <div class="sidebar-heading">Overview</div>
-
                     <a class="menu-link @if (request()->routeIs('dashboard')) is-active @endif" href="{{ route('dashboard') }}">
                         <span class="menu-icon">DB</span>
                         <span class="menu-copy">
                             <strong>Dashboard</strong>
-                            <small>Ringkasan operasional utama</small>
                         </span>
                     </a>
-                </div>
-
-                <div class="sidebar-section">
-                    <div class="sidebar-heading">Master Data</div>
 
                     <a class="menu-link @if (request()->routeIs('dashboard.projects.*')) is-active @endif" href="{{ route('dashboard.projects.index') }}">
-                        <span class="menu-icon">PJ</span>
+                        <span class="menu-icon">PR</span>
                         <span class="menu-copy">
-                            <strong>Projects / Tenants</strong>
-                            <small>Kelola tenant, `app_id`, callback, secret</small>
+                            <strong>Projects</strong>
                         </span>
                     </a>
-                </div>
-
-                <div class="sidebar-section">
-                    <div class="sidebar-heading">Operasional Payment</div>
 
                     <a class="menu-link @if (request()->routeIs('dashboard.transactions.*')) is-active @endif" href="{{ route('dashboard.transactions.index') }}">
                         <span class="menu-icon">TR</span>
                         <span class="menu-copy">
                             <strong>Transactions</strong>
-                            <small>List global, status, dan detail transaksi</small>
                         </span>
                     </a>
 
                     <a class="menu-link @if (request()->routeIs('dashboard.webhook-logs.*')) is-active @endif" href="{{ route('dashboard.webhook-logs.index') }}">
                         <span class="menu-icon">WH</span>
                         <span class="menu-copy">
-                            <strong>Webhook Logs</strong>
-                            <small>Audit webhook Midtrans dan validasi signature</small>
+                            <strong>Webhooks</strong>
                         </span>
                     </a>
 
                     <a class="menu-link @if (request()->routeIs('dashboard.callback-logs.*')) is-active @endif" href="{{ route('dashboard.callback-logs.index') }}">
                         <span class="menu-icon">CB</span>
                         <span class="menu-copy">
-                            <strong>Callback Logs</strong>
-                            <small>Status forwarding ke project asal</small>
+                            <strong>Callbacks</strong>
                         </span>
                     </a>
-                </div>
-
-                <div class="sidebar-section">
-                    <div class="sidebar-heading">Rencana PRD</div>
-
-                    <div class="menu-link is-muted">
-                        <span class="menu-icon">RT</span>
-                        <span class="menu-copy">
-                            <strong>Retry Manual Callback</strong>
-                            <small>Sudah aktif dari callback log detail dan ringkasan health ops dashboard</small>
-                        </span>
-                        <span class="menu-tag">Live</span>
-                    </div>
-
-                    <div class="menu-link is-muted">
-                        <span class="menu-icon">RP</span>
-                        <span class="menu-copy">
-                            <strong>Reporting & Filter Lanjutan</strong>
-                            <small>Filter lintas tenant, export, dan analytics nominal owner-level kini aktif di dashboard</small>
-                        </span>
-                        <span class="menu-tag">Live</span>
-                    </div>
-
-                    <div class="menu-link is-muted">
-                        <span class="menu-icon">OP</span>
-                        <span class="menu-copy">
-                            <strong>Queue & Health Ops</strong>
-                            <small>Ringkasan backlog callback, retry schedule, dan queue forwarding kini tampil di dashboard</small>
-                        </span>
-                        <span class="menu-tag">Live</span>
-                    </div>
                 </div>
 
                 <div class="sidebar-footer">
