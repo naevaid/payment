@@ -12,12 +12,19 @@ class ProjectRequestSignature
         string $secretKey,
         string $timestamp,
     ): string {
+        $queryString = $request->getQueryString();
+        $path = $request->getPathInfo();
+
+        if (filled($queryString)) {
+            $path .= '?'.$queryString;
+        }
+
         return $this->make(
             appId: $appId,
             secretKey: $secretKey,
             timestamp: $timestamp,
             method: $request->method(),
-            path: $request->getPathInfo(),
+            path: $path,
             body: $request->getContent(),
         );
     }

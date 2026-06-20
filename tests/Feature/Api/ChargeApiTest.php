@@ -4,6 +4,7 @@ namespace Tests\Feature\Api;
 
 use App\Models\Project;
 use App\Support\ProjectRequestSignature;
+use Illuminate\Http\Request;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -318,6 +319,115 @@ class ChargeApiTest extends TestCase
             ->assertJsonPath('token', 'snap-token-legacy');
     }
 
+    public function test_project_can_lookup_transaction_by_client_order_id(): void
+    {
+        $project = Project::create([
+            'app_id' => 'project_lookup_prod',
+            'project_name' => 'Project Lookup',
+            'secret_key' => 'secret-lookup-123',
+            'default_callback_url' => 'https://project-lookup.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $transaction = \App\Models\Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'PROJECTLOOKUP-01JABC1234567890',
+            'client_order_id' => 'INV-LOOKUP-001',
+            'amount' => 123000,
+            'currency' => 'IDR',
+            'status' => 'pending',
+            'callback_status' => 'queued',
+            'callback_url' => 'https://project-lookup.test/api/payment/callback',
+            'payment_type' => 'bank_transfer',
+            'snap_redirect_url' => 'https://midtrans.test/snap/lookup-001',
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/transactions/lookup?identifier=INV-LOOKUP-001&by=client_order_id',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get(
+            '/api/v1/transactions/lookup?identifier=INV-LOOKUP-001&by=client_order_id',
+            $headers,
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.gateway_order_id', $transaction->gateway_order_id)
+            ->assertJsonPath('data.order_id', 'INV-LOOKUP-001')
+            ->assertJsonPath('data.callback_status', 'queued')
+            ->assertJsonPath('data.redirect_url', 'https://midtrans.test/snap/lookup-001');
+    }
+
+    public function test_project_can_lookup_transaction_with_auto_identifier_mode(): void
+    {
+        $project = Project::create([
+            'app_id' => 'project_lookup_auto_prod',
+            'project_name' => 'Project Lookup Auto',
+            'secret_key' => 'secret-lookup-auto-123',
+            'default_callback_url' => 'https://project-lookup-auto.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        \App\Models\Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'PROJECTAUTO-01JABC1234567890',
+            'client_order_id' => 'INV-AUTO-001',
+            'amount' => 78000,
+            'currency' => 'IDR',
+            'status' => 'settlement',
+            'callback_status' => 'success',
+            'callback_url' => 'https://project-lookup-auto.test/api/payment/callback',
+            'payment_type' => 'qris',
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/transactions/lookup?identifier=INV-AUTO-001',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get(
+            '/api/v1/transactions/lookup?identifier=INV-AUTO-001',
+            $headers,
+        );
+
+        $response->assertOk()
+            ->assertJsonPath('data.order_id', 'INV-AUTO-001')
+            ->assertJsonPath('data.status', 'settlement')
+            ->assertJsonPath('data.callback_status', 'success')
+            ->assertJsonPath('data.payment_type', 'qris');
+    }
+
+    public function test_lookup_query_tampering_is_rejected_by_hmac_signature(): void
+    {
+        $project = Project::create([
+            'app_id' => 'project_lookup_tamper_prod',
+            'project_name' => 'Project Lookup Tamper',
+            'secret_key' => 'secret-lookup-tamper-123',
+            'default_callback_url' => 'https://project-lookup-tamper.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/transactions/lookup?identifier=INV-TAMPER-001',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get(
+            '/api/v1/transactions/lookup?identifier=INV-TAMPER-999',
+            $headers,
+        );
+
+        $response->assertUnauthorized()
+            ->assertJsonPath('message', 'Invalid project request signature.');
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      * @return array<string, string>
@@ -332,6 +442,27 @@ class ChargeApiTest extends TestCase
             method: 'POST',
             path: '/api/v1/charge',
             body: $body,
+        );
+
+        return [
+            'Accept' => 'application/json',
+            'X-App-ID' => $project->app_id,
+            'X-Timestamp' => $timestamp,
+            'X-Payment-Signature' => $signature,
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    protected function signedGetHeaders(Project $project, string $path, string $timestamp): array
+    {
+        $request = Request::create($path, 'GET');
+        $signature = app(ProjectRequestSignature::class)->forRequest(
+            request: $request,
+            appId: $project->app_id,
+            secretKey: $project->secret_key,
+            timestamp: $timestamp,
         );
 
         return [
