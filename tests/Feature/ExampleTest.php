@@ -86,4 +86,11 @@ class ExampleTest extends TestCase
             ->assertSee('Buat akun dashboard utama')
             ->assertSee('Register');
     }
+
+    public function test_application_timezone_defaults_to_wib_jakarta(): void
+    {
+        $this->assertSame('Asia/Jakarta', config('app.timezone'));
+        $this->assertSame('+07:00', config('database.connections.mysql.timezone'));
+        $this->assertSame('+07:00', config('database.connections.mariadb.timezone'));
+    }
 }
