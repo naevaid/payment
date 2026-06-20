@@ -8,13 +8,14 @@ use App\Models\Transaction;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use RuntimeException;
 use Throwable;
 
 class ProjectCallbackService
 {
     public function __construct(
-        private readonly int $timeoutSeconds = 10,
+        private int $timeoutSeconds = 10,
     ) {
         $this->timeoutSeconds = (int) config('payment.callback.timeout_seconds', 10);
     }
@@ -25,8 +26,8 @@ class ProjectCallbackService
 
         $callbackUrl = $transaction->callback_url ?: $transaction->project?->default_callback_url;
         $payload = $this->buildPayload($transaction);
-        $headers = $this->buildHeaders($transaction, $payload);
         $dispatchedAt = now();
+        $headers = $this->buildHeaders($transaction, $payload, $attempt, $dispatchedAt);
 
         if (blank($callbackUrl)) {
             $transaction->forceFill([
@@ -126,9 +127,10 @@ class ProjectCallbackService
      * @param  array<string, mixed>  $payload
      * @return array<string, string>
      */
-    public function buildHeaders(Transaction $transaction, array $payload): array
+    public function buildHeaders(Transaction $transaction, array $payload, int $attempt, Carbon $dispatchedAt): array
     {
         $project = $transaction->project;
+        $deliveryId = (string) Str::uuid();
         $signature = hash_hmac(
             'sha256',
             json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '',
@@ -139,6 +141,9 @@ class ProjectCallbackService
             'User-Agent' => (string) config('payment.callback.user_agent'),
             'X-Payment-App-Id' => (string) $project?->app_id,
             'X-Payment-Event' => 'payment.status.updated',
+            'X-Payment-Attempt' => (string) $attempt,
+            'X-Payment-Timestamp' => (string) $dispatchedAt->timestamp,
+            'X-Payment-Delivery-Id' => $deliveryId,
             'X-Payment-Signature' => $signature,
         ];
     }
