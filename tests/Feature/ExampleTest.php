@@ -61,11 +61,12 @@ class ExampleTest extends TestCase
         $response = $this->get('/midtrans/finish?order_id=INV-001&transaction_status=settlement');
 
         $response->assertOk()
-            ->assertSee('Status transaksi')
+            ->assertSee('Transaksi Anda Berhasil')
             ->assertSee('INV-001')
-            ->assertSee('settlement')
-            ->assertSee('Finish Project')
-            ->assertSee('/midtrans/finish');
+            ->assertSee('Settlement')
+            ->assertSee('Rp 150.000 IDR')
+            ->assertDontSee('Lihat Dokumentasi API')
+            ->assertDontSee('Finish Redirect URL');
     }
 
     public function test_the_login_page_is_accessible(): void

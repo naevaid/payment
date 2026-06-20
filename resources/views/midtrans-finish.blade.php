@@ -74,11 +74,36 @@
             .notice {
                 margin-top: 22px;
                 padding: 16px 18px;
-                border: 1px solid var(--success-border);
                 border-radius: 18px;
+                line-height: 1.6;
+            }
+
+            .notice strong {
+                font-weight: 700;
+            }
+
+            .notice-success {
+                border: 1px solid var(--success-border);
                 background: var(--success-bg);
                 color: var(--success-text);
-                line-height: 1.6;
+            }
+
+            .notice-pending {
+                border: 1px solid #fcd34d;
+                background: #fffbeb;
+                color: #b45309;
+            }
+
+            .notice-failed {
+                border: 1px solid #fecaca;
+                background: #fef2f2;
+                color: #b91c1c;
+            }
+
+            .notice-neutral {
+                border: 1px solid var(--border);
+                background: #f8fafc;
+                color: var(--text);
             }
 
             .meta {
@@ -137,72 +162,87 @@
         </style>
     </head>
     <body>
+        @php
+            $normalizedStatus = strtolower((string) ($transaction?->status->value ?? $midtransStatus ?: ''));
+            $displayStatus = $normalizedStatus !== '' ? str_replace('_', ' ', $normalizedStatus) : 'menunggu pembaruan';
+            $statusLabel = ucfirst($displayStatus);
+            $statusTone = match ($normalizedStatus) {
+                'settlement', 'capture', 'success' => 'success',
+                'pending' => 'pending',
+                'deny', 'cancel', 'expire', 'failure', 'failed' => 'failed',
+                default => 'neutral',
+            };
+            $headline = match ($statusTone) {
+                'success' => 'Transaksi Anda Berhasil',
+                'pending' => 'Transaksi Anda Sedang Diproses',
+                'failed' => 'Transaksi Belum Berhasil',
+                default => 'Status Transaksi',
+            };
+            $summary = match ($statusTone) {
+                'success' => 'Pembayaran sudah diterima. Simpan informasi transaksi ini bila Anda membutuhkannya kembali.',
+                'pending' => 'Pembayaran Anda masih menunggu penyelesaian. Silakan cek kembali beberapa saat lagi.',
+                'failed' => 'Pembayaran belum dapat diselesaikan. Silakan coba lagi atau hubungi pihak terkait bila diperlukan.',
+                default => 'Informasi transaksi ditampilkan sesuai data yang tersedia saat ini.',
+            };
+            $amountValue = $transaction?->amount;
+            if ($amountValue === null && $grossAmount !== '') {
+                $amountValue = (int) round((float) $grossAmount);
+            }
+            $amountCurrency = $transaction?->currency ?? 'IDR';
+            $amountText = $amountValue !== null
+                ? 'Rp '.number_format((int) $amountValue, 0, ',', '.').' '.$amountCurrency
+                : null;
+            $transactionTimeText = $settlementTime !== '' ? $settlementTime : ($transactionTime !== '' ? $transactionTime : null);
+        @endphp
         <main class="card">
             <span class="eyebrow">Status Pembayaran</span>
-            <h1>Status transaksi</h1>
-            <p>
-                Halaman ini dipakai sebagai landing page setelah customer menyelesaikan alur pembayaran. Status akhir pembayaran tetap
-                dipastikan melalui notifikasi server-to-server dan sinkronisasi transaksi di service ini.
-            </p>
+            <h1>{{ $headline }}</h1>
+            <p>{{ $summary }}</p>
 
-            <div class="notice">
-                Halaman ini sengaja dibuat fleksibel agar bisa menampilkan ringkasan status, detail transaksi lokal, dan informasi
-                yang dibawa oleh redirect pembayaran dalam satu tampilan.
+            <div class="notice notice-{{ $statusTone }}">
+                <strong>Status saat ini:</strong> {{ $statusLabel }}
             </div>
 
             <div class="meta">
-                @if ($transaction)
+                @if ($transaction?->client_order_id || $orderId !== '')
                     <div class="meta-item">
-                        <strong>Gateway Order ID</strong>
+                        <strong>Order ID</strong>
+                        <code>{{ $transaction?->client_order_id ?? $orderId }}</code>
+                    </div>
+                @endif
+
+                @if ($transaction?->gateway_order_id)
+                    <div class="meta-item">
+                        <strong>Referensi Transaksi</strong>
                         <code>{{ $transaction->gateway_order_id }}</code>
                     </div>
                 @endif
 
-                @if ($transaction?->client_order_id)
+                @if ($normalizedStatus !== '')
                     <div class="meta-item">
-                        <strong>Order ID Tenant</strong>
-                        <code>{{ $transaction->client_order_id }}</code>
+                        <strong>Status Pembayaran</strong>
+                        <code>{{ $statusLabel }}</code>
                     </div>
                 @endif
 
-                @if ($transaction)
+                @if ($amountText !== null)
                     <div class="meta-item">
-                        <strong>Status Internal</strong>
-                        <code>{{ $transaction->status->value }}</code>
-                    </div>
-
-                    <div class="meta-item">
-                        <strong>Status Callback</strong>
-                        <code>{{ $transaction->callback_status->value }}</code>
-                    </div>
-
-                    <div class="meta-item">
-                        <strong>Nominal</strong>
-                        <code>Rp {{ number_format($transaction->amount, 0, ',', '.') }} {{ $transaction->currency }}</code>
-                    </div>
-
-                    <div class="meta-item">
-                        <strong>Project</strong>
-                        <code>{{ $transaction->project?->project_name ?? '-' }} ({{ $transaction->project?->app_id ?? '-' }})</code>
-                    </div>
-
-                    <div class="meta-item">
-                        <strong>Terakhir Diperbarui</strong>
-                        <code>{{ $transaction->updated_at?->format('d M Y H:i:s') ?? '-' }}</code>
+                        <strong>Total Pembayaran</strong>
+                        <code>{{ $amountText }}</code>
                     </div>
                 @endif
 
-                @if ($orderId !== '')
+                @if ($paymentType !== '')
                     <div class="meta-item">
-                        <strong>Order ID dari Redirect</strong>
-                        <code>{{ $orderId }}</code>
+                        <strong>Metode Pembayaran</strong>
+                        <code>{{ ucfirst(str_replace('_', ' ', $paymentType)) }}</code>
                     </div>
                 @endif
 
-                @if ($midtransStatus !== '')
+                @if ($transactionTimeText !== null)
                     <div class="meta-item">
-                        <strong>Status dari Midtrans</strong>
-                        <code>{{ $midtransStatus }}</code>
+                        <strong>Waktu Transaksi</strong>
+                        <code>{{ $transactionTimeText }}</code>
                     </div>
                 @endif
 
@@ -213,36 +253,19 @@
                     </div>
                 @endif
 
-                @if ($paymentType !== '')
-                    <div class="meta-item">
-                        <strong>Payment Type</strong>
-                        <code>{{ $paymentType }}</code>
-                    </div>
-                @endif
-
                 @if ($fraudStatus !== '')
                     <div class="meta-item">
                         <strong>Fraud Status</strong>
-                        <code>{{ $fraudStatus }}</code>
+                        <code>{{ ucfirst(str_replace('_', ' ', $fraudStatus)) }}</code>
                     </div>
                 @endif
 
-                @if (! $transaction)
+                @if ($transaction?->updated_at)
                     <div class="meta-item">
-                        <strong>Status Halaman</strong>
-                        <code>Detail transaksi lokal belum ditemukan. Halaman tetap dapat dipakai untuk menampilkan status dari parameter redirect.</code>
+                        <strong>Terakhir Diperbarui</strong>
+                        <code>{{ $transaction->updated_at->format('d M Y H:i:s') }}</code>
                     </div>
                 @endif
-
-                <div class="meta-item">
-                    <strong>Finish Redirect URL</strong>
-                    <code>{{ url('/midtrans/finish') }}</code>
-                </div>
-            </div>
-
-            <div class="actions">
-                <a class="button button-primary" href="{{ route('home') }}">Kembali ke Beranda</a>
-                <a class="button" href="{{ route('docs.api') }}">Lihat Dokumentasi API</a>
             </div>
         </main>
     </body>

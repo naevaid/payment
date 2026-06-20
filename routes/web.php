@@ -38,6 +38,9 @@ Route::get('/midtrans/finish', function (Request $request) {
         'statusCode' => (string) $request->query('status_code', ''),
         'paymentType' => (string) $request->query('payment_type', ''),
         'fraudStatus' => (string) $request->query('fraud_status', ''),
+        'grossAmount' => (string) $request->query('gross_amount', ''),
+        'transactionTime' => (string) $request->query('transaction_time', ''),
+        'settlementTime' => (string) $request->query('settlement_time', ''),
         'orderId' => $orderId,
     ]);
 })->name('midtrans.finish');
