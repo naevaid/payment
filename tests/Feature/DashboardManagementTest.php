@@ -334,6 +334,8 @@ class DashboardManagementTest extends TestCase
             ->assertSee('Projects')
             ->assertSee('Webhooks')
             ->assertSee('Callbacks')
+            ->assertDontSee('Akses Dashboard')
+            ->assertDontSee('Navigasi utama dirapikan agar fokus ke alat operasional yang benar-benar dipakai setiap hari.')
             ->assertDontSee('Rencana PRD')
             ->assertDontSee('Projects / Tenants')
             ->assertDontSee('List global, status, dan detail transaksi')

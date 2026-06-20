@@ -42,34 +42,6 @@
         <div class="panel-body">
             <div class="panel-heading">
                 <div>
-                    <h2>Akses Dashboard</h2>
-                    <p>Navigasi utama dirapikan agar fokus ke alat operasional yang benar-benar dipakai setiap hari.</p>
-                </div>
-            </div>
-
-            <div class="grid grid-3">
-                <div class="summary-card">
-                    <strong>Menu utama</strong>
-                    <span>Dashboard, Projects, Transactions, Webhooks, dan Callbacks menjadi jalur utama untuk operasional harian.</span>
-                </div>
-
-                <div class="summary-card">
-                    <strong>Fokus operasional</strong>
-                    <span>Monitoring transaksi, inbound webhook, delivery callback, dan pelaporan owner-level tersedia dari satu dashboard.</span>
-                </div>
-
-                <div class="summary-card">
-                    <strong>Tujuan</strong>
-                    <span>Memberikan tampilan kontrol yang ringkas untuk seluruh payment flow internal Naeva tanpa elemen roadmap yang tidak bisa dipakai.</span>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <section class="panel">
-        <div class="panel-body">
-            <div class="panel-heading">
-                <div>
                     <h2>Owner-Level Reporting</h2>
                     <p>Ringkasan nominal utama untuk memantau pendapatan settlement, exposure pending, dan transaksi gagal lintas tenant.</p>
                 </div>
