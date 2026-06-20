@@ -8,19 +8,39 @@ use App\Models\CallbackForwardingLog;
 use App\Models\MidtransWebhookLog;
 use App\Models\Project;
 use App\Models\Transaction;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function __invoke(): View
     {
+        $failedTransactionStatuses = [
+            TransactionStatus::Failed,
+            TransactionStatus::Cancelled,
+            TransactionStatus::Expired,
+            TransactionStatus::Refunded,
+        ];
         $callbackMaxAttempts = (int) config('payment.callback.max_attempts', 3);
         $callbackBackoff = array_map('intval', config('payment.callback.backoff', [60, 300, 900]));
         $nextRetryLog = CallbackForwardingLog::query()
             ->whereNotNull('next_retry_at')
             ->orderBy('next_retry_at')
             ->first();
+        $topSettlementProjects = Transaction::query()
+            ->join('projects', 'projects.id', '=', 'transactions.project_id')
+            ->where('transactions.status', TransactionStatus::Settlement->value)
+            ->groupBy('transactions.project_id', 'projects.project_name', 'projects.app_id')
+            ->orderByDesc(DB::raw('SUM(transactions.amount)'))
+            ->orderByDesc(DB::raw('COUNT(*)'))
+            ->limit(5)
+            ->get([
+                'transactions.project_id',
+                'projects.project_name',
+                'projects.app_id',
+                DB::raw('COUNT(*) as settlement_transactions'),
+                DB::raw('COALESCE(SUM(transactions.amount), 0) as settlement_amount'),
+            ]);
 
         $callbackHealthLogs = CallbackForwardingLog::query()
             ->with(['project', 'transaction.project'])
@@ -62,18 +82,25 @@ class DashboardController extends Controller
                 'transactions' => Transaction::count(),
                 'settlement_transactions' => Transaction::where('status', TransactionStatus::Settlement)->count(),
                 'pending_transactions' => Transaction::where('status', TransactionStatus::Pending)->count(),
-                'failed_transactions' => Transaction::whereIn('status', [
-                    TransactionStatus::Failed,
-                    TransactionStatus::Cancelled,
-                    TransactionStatus::Expired,
-                    TransactionStatus::Refunded,
-                ])->count(),
+                'failed_transactions' => Transaction::whereIn('status', $failedTransactionStatuses)->count(),
                 'queued_callbacks' => Transaction::where('callback_status', CallbackStatus::Queued)->count(),
                 'callback_success' => Transaction::where('callback_status', CallbackStatus::Success)->count(),
                 'callback_failed' => Transaction::where('callback_status', CallbackStatus::Failed)->count(),
                 'callback_skipped' => Transaction::where('callback_status', CallbackStatus::Skipped)->count(),
                 'webhook_logs' => MidtransWebhookLog::count(),
                 'forwarding_logs' => CallbackForwardingLog::count(),
+            ],
+            'ownerMetrics' => [
+                'settlement_amount' => (int) Transaction::query()
+                    ->where('status', TransactionStatus::Settlement)
+                    ->sum('amount'),
+                'pending_amount' => (int) Transaction::query()
+                    ->where('status', TransactionStatus::Pending)
+                    ->sum('amount'),
+                'failed_amount' => (int) Transaction::query()
+                    ->whereIn('status', $failedTransactionStatuses)
+                    ->sum('amount'),
+                'top_settlement_projects' => $topSettlementProjects,
             ],
             'callbackHealth' => [
                 'queue_connection' => (string) config('queue.default', 'sync'),

@@ -115,6 +115,14 @@ class DashboardManagementTest extends TestCase
             'is_active' => true,
         ]);
 
+        $growthProject = Project::create([
+            'app_id' => 'APP-GROWTH',
+            'project_name' => 'Growth Project',
+            'secret_key' => 'growth-project-secret-1234',
+            'default_callback_url' => 'https://growth.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
         $transaction = Transaction::create([
             'project_id' => $project->id,
             'gateway_order_id' => 'GW-ORDER-001',
@@ -171,6 +179,39 @@ class DashboardManagementTest extends TestCase
             'callback_url' => 'https://ops.naeva.id/payment/callback',
         ]);
 
+        Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-TX-FAILED-001',
+            'client_order_id' => 'CLIENT-TX-FAILED-001',
+            'amount' => 55000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Failed,
+            'callback_status' => CallbackStatus::Failed,
+            'callback_url' => 'https://ops.naeva.id/payment/callback',
+        ]);
+
+        Transaction::create([
+            'project_id' => $growthProject->id,
+            'gateway_order_id' => 'GW-GROWTH-SETTLEMENT-001',
+            'client_order_id' => 'CLIENT-GROWTH-SETTLEMENT-001',
+            'amount' => 350000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Settlement,
+            'callback_status' => CallbackStatus::Success,
+            'callback_url' => 'https://growth.naeva.id/payment/callback',
+        ]);
+
+        Transaction::create([
+            'project_id' => $growthProject->id,
+            'gateway_order_id' => 'GW-GROWTH-SETTLEMENT-002',
+            'client_order_id' => 'CLIENT-GROWTH-SETTLEMENT-002',
+            'amount' => 175000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Settlement,
+            'callback_status' => CallbackStatus::Success,
+            'callback_url' => 'https://growth.naeva.id/payment/callback',
+        ]);
+
         $failedCallbackLog = CallbackForwardingLog::create([
             'transaction_id' => $failedTransaction->id,
             'project_id' => $project->id,
@@ -217,13 +258,20 @@ class DashboardManagementTest extends TestCase
         $this->actingAs($user)
             ->get(route('dashboard'))
             ->assertOk()
+            ->assertSee('Owner-Level Reporting')
+            ->assertSee('Rp 624.000')
+            ->assertSee('Rp 170.000')
+            ->assertSee('Rp 55.000')
+            ->assertSee('Ops Project')
+            ->assertSee('Growth Project')
+            ->assertSee('Rp 525.000')
+            ->assertSee('APP-GROWTH')
             ->assertSee('Queue & Callback Health Ops', false)
             ->assertSee('payment-callbacks')
             ->assertSee('GW-FAILED-001')
             ->assertSee('GW-SKIPPED-001')
             ->assertSee('Retry Manual Callback')
-            ->assertSee('Live')
-            ->assertSee('Partial');
+            ->assertSee('Live');
 
         $this->actingAs($user)
             ->get(route('dashboard.transactions.index'))

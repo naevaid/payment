@@ -90,9 +90,9 @@
                         <span class="menu-icon">RP</span>
                         <span class="menu-copy">
                             <strong>Reporting & Filter Lanjutan</strong>
-                            <small>Filter lintas tenant sudah aktif; analytics nominal owner-level masih dilanjutkan</small>
+                            <small>Filter lintas tenant, export, dan analytics nominal owner-level kini aktif di dashboard</small>
                         </span>
-                        <span class="menu-tag">Partial</span>
+                        <span class="menu-tag">Live</span>
                     </div>
 
                     <div class="menu-link is-muted">

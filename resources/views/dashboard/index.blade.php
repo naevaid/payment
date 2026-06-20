@@ -55,12 +55,51 @@
 
                 <div class="summary-card">
                     <strong>Menu next sesuai PRD</strong>
-                    <span>Reporting owner-level, analytics nominal settlement, dan penyempurnaan dokumentasi integrasi final.</span>
+                    <span>Penyempurnaan dokumentasi integrasi final dan review penutupan keseluruhan scope PRD.</span>
                 </div>
 
                 <div class="summary-card">
                     <strong>Tujuan operasional</strong>
                     <span>Memusatkan monitoring charge, webhook Midtrans, dan forwarding callback untuk semua project internal Naeva.</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-body">
+            <div class="panel-heading">
+                <div>
+                    <h2>Owner-Level Reporting</h2>
+                    <p>Ringkasan nominal utama untuk memantau pendapatan settlement, exposure pending, dan transaksi gagal lintas tenant.</p>
+                </div>
+
+                <a class="button" href="{{ route('dashboard.transactions.index', ['status' => 'settlement']) }}">Lihat transaksi settlement</a>
+            </div>
+
+            <div class="grid grid-4">
+                <div class="stat-card">
+                    <span class="label">Settlement amount</span>
+                    <span class="value" style="font-size: 24px;">Rp {{ number_format($ownerMetrics['settlement_amount'], 0, ',', '.') }}</span>
+                    <div class="meta">{{ number_format($stats['settlement_transactions']) }} transaksi settlement berhasil</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="label">Pending amount</span>
+                    <span class="value" style="font-size: 24px;">Rp {{ number_format($ownerMetrics['pending_amount'], 0, ',', '.') }}</span>
+                    <div class="meta">{{ number_format($stats['pending_transactions']) }} transaksi masih menunggu penyelesaian</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="label">Failed amount</span>
+                    <span class="value" style="font-size: 24px;">Rp {{ number_format($ownerMetrics['failed_amount'], 0, ',', '.') }}</span>
+                    <div class="meta">{{ number_format($stats['failed_transactions']) }} transaksi gagal, cancel, expired, atau refund</div>
+                </div>
+
+                <div class="stat-card">
+                    <span class="label">Tenant settlement</span>
+                    <span class="value">{{ number_format($ownerMetrics['top_settlement_projects']->count()) }}</span>
+                    <div class="meta">Tenant dengan settlement tercatat pada leaderboard owner</div>
                 </div>
             </div>
         </div>
@@ -102,6 +141,33 @@
                     <div class="meta">Retry berikutnya {{ $callbackHealth['next_retry_at']?->diffForHumans() ?? 'belum ada jadwal' }}</div>
                 </div>
             </div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-body">
+            <div class="panel-heading">
+                <div>
+                    <h2>Top Tenant by Settlement</h2>
+                    <p>Tenant dengan nominal settlement tertinggi untuk kebutuhan pelaporan owner dan prioritas monitoring bisnis.</p>
+                </div>
+
+                <a class="button" href="{{ route('dashboard.transactions.index') }}">Buka semua transaksi</a>
+            </div>
+
+            @if ($ownerMetrics['top_settlement_projects']->isEmpty())
+                <div class="empty-state">Belum ada transaksi settlement untuk ditampilkan pada ranking tenant.</div>
+            @else
+                <div class="list">
+                    @foreach ($ownerMetrics['top_settlement_projects'] as $project)
+                        <div class="list-item">
+                            <strong>{{ $project->project_name }}</strong>
+                            <span>{{ $project->app_id }} | {{ number_format((int) $project->settlement_transactions) }} transaksi settlement</span>
+                            <span>Nominal settlement: Rp {{ number_format((int) $project->settlement_amount, 0, ',', '.') }}</span>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
     </section>
 
