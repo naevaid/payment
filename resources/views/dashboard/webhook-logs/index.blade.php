@@ -33,10 +33,21 @@
                             <option value="invalid" @selected(($filters['signature'] ?? '') === 'invalid')>Invalid</option>
                         </select>
                     </div>
+
+                    <div class="field">
+                        <label for="date_from">Tanggal dari</label>
+                        <input class="input" id="date_from" type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                    </div>
+
+                    <div class="field">
+                        <label for="date_to">Tanggal sampai</label>
+                        <input class="input" id="date_to" type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+                    </div>
                 </div>
 
                 <div class="button-row">
                     <button class="button button-primary" type="submit">Terapkan filter</button>
+                    <a class="button" href="{{ route('dashboard.webhook-logs.export', request()->query()) }}">Export CSV</a>
                     <a class="button" href="{{ route('dashboard.webhook-logs.index') }}">Reset</a>
                 </div>
             </form>

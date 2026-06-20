@@ -35,10 +35,13 @@ Route::middleware('auth')->group(function (): void {
     Route::post('/dashboard/projects/{project}/regenerate-app-id', [ProjectController::class, 'regenerateAppId'])->name('dashboard.projects.regenerate-app-id');
     Route::post('/dashboard/projects/{project}/regenerate-secret-key', [ProjectController::class, 'regenerateSecretKey'])->name('dashboard.projects.regenerate-secret-key');
     Route::get('/dashboard/transactions', [TransactionController::class, 'index'])->name('dashboard.transactions.index');
+    Route::get('/dashboard/transactions/export/csv', [TransactionController::class, 'exportCsv'])->name('dashboard.transactions.export');
     Route::get('/dashboard/transactions/{transaction}', [TransactionController::class, 'show'])->name('dashboard.transactions.show');
     Route::get('/dashboard/webhook-logs', [WebhookLogController::class, 'index'])->name('dashboard.webhook-logs.index');
+    Route::get('/dashboard/webhook-logs/export/csv', [WebhookLogController::class, 'exportCsv'])->name('dashboard.webhook-logs.export');
     Route::get('/dashboard/webhook-logs/{webhookLog}', [WebhookLogController::class, 'show'])->name('dashboard.webhook-logs.show');
     Route::get('/dashboard/callback-logs', [CallbackForwardingLogController::class, 'index'])->name('dashboard.callback-logs.index');
+    Route::get('/dashboard/callback-logs/export/csv', [CallbackForwardingLogController::class, 'exportCsv'])->name('dashboard.callback-logs.export');
     Route::get('/dashboard/callback-logs/{callbackLog}', [CallbackForwardingLogController::class, 'show'])->name('dashboard.callback-logs.show');
     Route::post('/dashboard/callback-logs/{callbackLog}/retry', [CallbackForwardingLogController::class, 'retry'])->name('dashboard.callback-logs.retry');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');

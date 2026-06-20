@@ -11,6 +11,7 @@ use App\Models\Project;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
@@ -184,6 +185,150 @@ class DashboardManagementTest extends TestCase
             ->assertOk()
             ->assertSee('payment.status.updated')
             ->assertSee('ok');
+    }
+
+    public function test_authenticated_user_can_filter_dashboard_logs_by_date_and_export_csv(): void
+    {
+        $user = User::factory()->create();
+
+        $project = Project::create([
+            'app_id' => 'APP-FILTER',
+            'project_name' => 'Filter Project',
+            'secret_key' => 'filter-project-secret-1234',
+            'default_callback_url' => 'https://filter.naeva.id/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $olderTransaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-OLD-001',
+            'client_order_id' => 'CLIENT-OLD-001',
+            'amount' => 150000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Pending,
+            'callback_status' => CallbackStatus::Queued,
+            'callback_url' => 'https://filter.naeva.id/payment/callback/old',
+        ]);
+
+        $olderTransaction->forceFill([
+            'created_at' => Carbon::parse('2026-06-10 09:00:00'),
+            'updated_at' => Carbon::parse('2026-06-10 09:00:00'),
+        ])->saveQuietly();
+
+        $recentTransaction = Transaction::create([
+            'project_id' => $project->id,
+            'gateway_order_id' => 'GW-RECENT-001',
+            'client_order_id' => 'CLIENT-RECENT-001',
+            'amount' => 275000,
+            'currency' => 'IDR',
+            'status' => TransactionStatus::Settlement,
+            'callback_status' => CallbackStatus::Success,
+            'callback_url' => 'https://filter.naeva.id/payment/callback/recent',
+            'payment_type' => 'qris',
+        ]);
+
+        $recentTransaction->forceFill([
+            'created_at' => Carbon::parse('2026-06-20 14:30:00'),
+            'updated_at' => Carbon::parse('2026-06-20 14:30:00'),
+        ])->saveQuietly();
+
+        MidtransWebhookLog::create([
+            'transaction_id' => $olderTransaction->id,
+            'order_id' => $olderTransaction->gateway_order_id,
+            'midtrans_transaction_id' => 'MID-OLD-001',
+            'transaction_status' => 'pending',
+            'signature_key' => 'signature-old',
+            'payload' => ['status' => 'pending'],
+            'headers' => ['x-source' => 'test'],
+            'is_signature_valid' => true,
+            'processing_status' => 'received',
+            'received_at' => Carbon::parse('2026-06-10 09:15:00'),
+        ]);
+
+        MidtransWebhookLog::create([
+            'transaction_id' => $recentTransaction->id,
+            'order_id' => $recentTransaction->gateway_order_id,
+            'midtrans_transaction_id' => 'MID-RECENT-001',
+            'transaction_status' => 'settlement',
+            'signature_key' => 'signature-recent',
+            'payload' => ['status' => 'settlement'],
+            'headers' => ['x-source' => 'test'],
+            'is_signature_valid' => true,
+            'processing_status' => 'processed',
+            'received_at' => Carbon::parse('2026-06-20 14:35:00'),
+            'processed_at' => Carbon::parse('2026-06-20 14:36:00'),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $olderTransaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://filter.naeva.id/payment/callback/old',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['status' => 'pending'],
+            'request_headers' => ['X-Signature' => 'old'],
+            'response_status_code' => 500,
+            'response_body' => 'error',
+            'success' => false,
+            'error_message' => 'HTTP 500',
+            'dispatched_at' => Carbon::parse('2026-06-10 09:20:00'),
+        ]);
+
+        CallbackForwardingLog::create([
+            'transaction_id' => $recentTransaction->id,
+            'project_id' => $project->id,
+            'callback_url' => 'https://filter.naeva.id/payment/callback/recent',
+            'attempt' => 1,
+            'event_type' => 'payment.status.updated',
+            'payload' => ['status' => 'settlement'],
+            'request_headers' => ['X-Signature' => 'recent'],
+            'response_status_code' => 200,
+            'response_body' => 'ok',
+            'success' => true,
+            'dispatched_at' => Carbon::parse('2026-06-20 14:40:00'),
+            'responded_at' => Carbon::parse('2026-06-20 14:41:00'),
+        ]);
+
+        $dateFilters = [
+            'date_from' => '2026-06-19',
+            'date_to' => '2026-06-20',
+        ];
+
+        $this->actingAs($user)
+            ->get(route('dashboard.transactions.index', $dateFilters))
+            ->assertOk()
+            ->assertSee('GW-RECENT-001')
+            ->assertDontSee('GW-OLD-001');
+
+        $this->actingAs($user)
+            ->get(route('dashboard.webhook-logs.index', $dateFilters))
+            ->assertOk()
+            ->assertSee('GW-RECENT-001')
+            ->assertDontSee('GW-OLD-001');
+
+        $this->actingAs($user)
+            ->get(route('dashboard.callback-logs.index', $dateFilters))
+            ->assertOk()
+            ->assertSee('https://filter.naeva.id/payment/callback/recent')
+            ->assertDontSee('https://filter.naeva.id/payment/callback/old');
+
+        $transactionsExport = $this->actingAs($user)->get(route('dashboard.transactions.export', $dateFilters));
+        $transactionsExport->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $transactionsExport->headers->get('content-type'));
+        $this->assertStringContainsString('GW-RECENT-001', $transactionsExport->streamedContent());
+        $this->assertStringNotContainsString('GW-OLD-001', $transactionsExport->streamedContent());
+
+        $webhookExport = $this->actingAs($user)->get(route('dashboard.webhook-logs.export', $dateFilters));
+        $webhookExport->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $webhookExport->headers->get('content-type'));
+        $this->assertStringContainsString('MID-RECENT-001', $webhookExport->streamedContent());
+        $this->assertStringNotContainsString('MID-OLD-001', $webhookExport->streamedContent());
+
+        $callbackExport = $this->actingAs($user)->get(route('dashboard.callback-logs.export', $dateFilters));
+        $callbackExport->assertOk();
+        $this->assertStringContainsString('text/csv', (string) $callbackExport->headers->get('content-type'));
+        $this->assertStringContainsString('https://filter.naeva.id/payment/callback/recent', $callbackExport->streamedContent());
+        $this->assertStringNotContainsString('https://filter.naeva.id/payment/callback/old', $callbackExport->streamedContent());
     }
 
     public function test_authenticated_user_can_retry_failed_callback_from_dashboard(): void
