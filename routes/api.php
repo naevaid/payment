@@ -67,16 +67,99 @@ Route::prefix('v1')->group(function (): void {
             ];
         };
 
-        Route::get('/projects/me', function (Request $request) {
+        $serializeProjectProfile = function ($project): array {
+            $appUrl = rtrim((string) config('app.url', ''), '/');
+            $apiBaseUrl = filled($appUrl) ? $appUrl.'/api/v1' : '/api/v1';
+            $defaultCallbackUrl = $project->default_callback_url;
+            $hasDefaultCallbackUrl = filled($defaultCallbackUrl);
+            $isReady = $project->is_active && $hasDefaultCallbackUrl;
+
+            return [
+                'app_id' => $project->app_id,
+                'project_name' => $project->project_name,
+                'default_callback_url' => $defaultCallbackUrl,
+                'is_active' => $project->is_active,
+                'authentication' => [
+                    'mode' => 'hmac_signature',
+                    'signature_algorithm' => (string) config('payment.auth.signature_algorithm', 'sha256'),
+                    'timestamp_tolerance_seconds' => (int) config('payment.auth.timestamp_tolerance_seconds', 300),
+                    'request_headers' => [
+                        'app_id' => (string) config('payment.auth.app_id_header', 'X-App-ID'),
+                        'timestamp' => (string) config('payment.auth.timestamp_header', 'X-Timestamp'),
+                        'signature' => (string) config('payment.auth.signature_header', 'X-Payment-Signature'),
+                    ],
+                    'legacy_secret_header' => [
+                        'enabled' => (bool) config('payment.auth.allow_legacy_secret_header', true),
+                        'header' => (string) config('payment.auth.secret_key_header', 'X-Secret-Key'),
+                    ],
+                ],
+                'integration' => [
+                    'base_url' => $apiBaseUrl,
+                    'environment' => config('services.midtrans.is_production', true) ? 'production' : 'sandbox',
+                    'currency' => (string) config('payment.currency', 'IDR'),
+                    'endpoints' => [
+                        'charge' => '/api/v1/charge',
+                        'project_profile' => '/api/v1/projects/me',
+                        'transaction_lookup' => '/api/v1/transactions/lookup',
+                        'transaction_detail' => '/api/v1/transactions/{gatewayOrderId}',
+                        'callback_history' => '/api/v1/transactions/{gatewayOrderId}/callback-history',
+                    ],
+                ],
+                'callback' => [
+                    'default_url' => $defaultCallbackUrl,
+                    'retry' => [
+                        'queue' => (string) config('payment.callback.queue', 'payment-callbacks'),
+                        'timeout_seconds' => (int) config('payment.callback.timeout_seconds', 10),
+                        'max_attempts' => (int) config('payment.callback.max_attempts', 3),
+                        'backoff_seconds' => array_map('intval', config('payment.callback.backoff', [60, 300, 900])),
+                    ],
+                    'delivery_headers' => [
+                        'app_id' => 'X-Payment-App-Id',
+                        'event' => 'X-Payment-Event',
+                        'attempt' => 'X-Payment-Attempt',
+                        'timestamp' => 'X-Payment-Timestamp',
+                        'delivery_id' => 'X-Payment-Delivery-Id',
+                        'signature' => 'X-Payment-Signature',
+                    ],
+                    'signature' => [
+                        'algorithm' => 'sha256',
+                        'uses_project_secret_key' => true,
+                    ],
+                ],
+                'readiness' => [
+                    'status' => $isReady ? 'ready' : 'action_required',
+                    'can_charge' => $project->is_active,
+                    'has_default_callback_url' => $hasDefaultCallbackUrl,
+                    'checks' => [
+                        [
+                            'name' => 'project_active',
+                            'passed' => $project->is_active,
+                            'message' => $project->is_active
+                                ? 'Project aktif dan dapat mengakses API tenant.'
+                                : 'Project nonaktif dan tidak dapat membuat charge baru.',
+                        ],
+                        [
+                            'name' => 'default_callback_url_configured',
+                            'passed' => $hasDefaultCallbackUrl,
+                            'message' => $hasDefaultCallbackUrl
+                                ? 'Default callback URL sudah terpasang.'
+                                : 'Default callback URL belum diatur. Callback per request tetap bisa dikirim bila disediakan.',
+                        ],
+                        [
+                            'name' => 'hmac_signature_auth_ready',
+                            'passed' => true,
+                            'message' => 'Gunakan HMAC signature untuk integrasi tenant yang disarankan.',
+                        ],
+                    ],
+                ],
+            ];
+        };
+
+        Route::get('/projects/me', function (Request $request) use ($serializeProjectProfile) {
             $project = $request->attributes->get('project');
 
             return response()->json([
-                'data' => [
-                    'app_id' => $project->app_id,
-                    'project_name' => $project->project_name,
-                    'default_callback_url' => $project->default_callback_url,
-                    'is_active' => $project->is_active,
-                ],
+                'data' => $serializeProjectProfile($project),
             ]);
         });
 

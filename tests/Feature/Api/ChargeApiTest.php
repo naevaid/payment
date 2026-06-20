@@ -328,6 +328,88 @@ class ChargeApiTest extends TestCase
             ->assertJsonPath('token', 'snap-token-legacy');
     }
 
+    public function test_project_profile_returns_integration_readiness_metadata(): void
+    {
+        config([
+            'app.url' => 'https://payment.test',
+            'services.midtrans.is_production' => false,
+            'payment.auth.allow_legacy_secret_header' => true,
+            'payment.callback.queue' => 'payment-callbacks',
+            'payment.callback.timeout_seconds' => 12,
+            'payment.callback.max_attempts' => 4,
+            'payment.callback.backoff' => [60, 120, 300],
+        ]);
+
+        $project = Project::create([
+            'app_id' => 'project_profile_prod',
+            'project_name' => 'Project Profile',
+            'secret_key' => 'secret-profile-123',
+            'default_callback_url' => 'https://project-profile.test/api/payment/callback',
+            'is_active' => true,
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/projects/me',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get('/api/v1/projects/me', $headers);
+
+        $response->assertOk()
+            ->assertJsonPath('data.app_id', 'project_profile_prod')
+            ->assertJsonPath('data.project_name', 'Project Profile')
+            ->assertJsonPath('data.authentication.mode', 'hmac_signature')
+            ->assertJsonPath('data.authentication.request_headers.app_id', 'X-App-ID')
+            ->assertJsonPath('data.authentication.request_headers.timestamp', 'X-Timestamp')
+            ->assertJsonPath('data.authentication.request_headers.signature', 'X-Payment-Signature')
+            ->assertJsonPath('data.authentication.legacy_secret_header.enabled', true)
+            ->assertJsonPath('data.integration.base_url', 'https://payment.test/api/v1')
+            ->assertJsonPath('data.integration.environment', 'sandbox')
+            ->assertJsonPath('data.integration.endpoints.charge', '/api/v1/charge')
+            ->assertJsonPath('data.callback.default_url', 'https://project-profile.test/api/payment/callback')
+            ->assertJsonPath('data.callback.retry.queue', 'payment-callbacks')
+            ->assertJsonPath('data.callback.retry.timeout_seconds', 12)
+            ->assertJsonPath('data.callback.retry.max_attempts', 4)
+            ->assertJsonPath('data.callback.retry.backoff_seconds.1', 120)
+            ->assertJsonPath('data.callback.delivery_headers.signature', 'X-Payment-Signature')
+            ->assertJsonPath('data.callback.signature.algorithm', 'sha256')
+            ->assertJsonPath('data.callback.signature.uses_project_secret_key', true)
+            ->assertJsonPath('data.readiness.status', 'ready')
+            ->assertJsonPath('data.readiness.can_charge', true)
+            ->assertJsonPath('data.readiness.has_default_callback_url', true)
+            ->assertJsonCount(3, 'data.readiness.checks');
+    }
+
+    public function test_project_profile_marks_action_required_when_default_callback_url_is_missing(): void
+    {
+        $project = Project::create([
+            'app_id' => 'project_profile_missing_callback',
+            'project_name' => 'Project Without Callback',
+            'secret_key' => 'secret-missing-callback-123',
+            'default_callback_url' => null,
+            'is_active' => true,
+        ]);
+
+        $timestamp = (string) now()->timestamp;
+        $headers = $this->signedGetHeaders(
+            project: $project,
+            path: '/api/v1/projects/me',
+            timestamp: $timestamp,
+        );
+
+        $response = $this->get('/api/v1/projects/me', $headers);
+
+        $response->assertOk()
+            ->assertJsonPath('data.default_callback_url', null)
+            ->assertJsonPath('data.readiness.status', 'action_required')
+            ->assertJsonPath('data.readiness.can_charge', true)
+            ->assertJsonPath('data.readiness.has_default_callback_url', false)
+            ->assertJsonPath('data.readiness.checks.1.name', 'default_callback_url_configured')
+            ->assertJsonPath('data.readiness.checks.1.passed', false);
+    }
+
     public function test_project_can_lookup_transaction_by_client_order_id(): void
     {
         $project = Project::create([
