@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="id">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Dokumentasi API - {{ config('app.name', 'payment') }}</title>
+        <style>
+            :root {
+                color-scheme: light;
+                --bg: #f5f7fb;
+                --surface: #ffffff;
+                --surface-muted: #eef2ff;
+                --surface-soft: #f8fafc;
+                --text: #0f172a;
+                --text-muted: #475569;
+                --primary: #1d4ed8;
+                --primary-dark: #1e40af;
+                --border: #dbe2f0;
+                --success-bg: #ecfdf5;
+                --success-border: #a7f3d0;
+                --success-text: #047857;
+                --warning-bg: #fffbeb;
+                --warning-border: #fde68a;
+                --warning-text: #b45309;
+                --shadow: 0 30px 80px rgba(15, 23, 42, 0.08);
+            }
+
+            * {
+                box-sizing: border-box;
+            }
+
+            body {
+                margin: 0;
+                min-height: 100vh;
+                font-family: Arial, Helvetica, sans-serif;
+                background:
+                    radial-gradient(circle at top right, rgba(37, 99, 235, 0.12), transparent 28%),
+                    linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+                color: var(--text);
+            }
+
+            a {
+                color: inherit;
+            }
+
+            code,
+            pre {
+                font-family: Consolas, "Courier New", monospace;
+            }
+
+            .shell {
+                width: min(1180px, calc(100% - 32px));
+                margin: 0 auto;
+            }
+
+            .topbar {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                gap: 16px;
+                padding: 28px 0;
+            }
+
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                text-decoration: none;
+                color: inherit;
+            }
+
+            .brand-badge {
+                width: 42px;
+                height: 42px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 12px;
+                background: linear-gradient(135deg, #2563eb 0%, #0f172a 100%);
+                color: #fff;
+                font-weight: 700;
+            }
+
+            .brand-copy strong {
+                display: block;
+                font-size: 16px;
+            }
+
+            .brand-copy span {
+                display: block;
+                color: var(--text-muted);
+                font-size: 13px;
+                margin-top: 2px;
+            }
+
+            .nav-actions {
+                display: flex;
+                align-items: center;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                min-height: 44px;
+                padding: 0 18px;
+                border-radius: 12px;
+                border: 1px solid var(--border);
+                background: rgba(255, 255, 255, 0.78);
+                color: var(--text);
+                text-decoration: none;
+                font-weight: 600;
+                transition: 0.2s ease;
+            }
+
+            .button:hover {
+                background: #fff;
+                border-color: #cbd5e1;
+            }
+
+            .button-primary {
+                background: var(--primary);
+                border-color: var(--primary);
+                color: #fff;
+                box-shadow: 0 12px 28px rgba(29, 78, 216, 0.22);
+            }
+
+            .button-primary:hover {
+                background: var(--primary-dark);
+                border-color: var(--primary-dark);
+            }
+
+            .hero {
+                display: grid;
+                gap: 24px;
+                padding: 10px 0 24px;
+            }
+
+            .panel {
+                background: rgba(255, 255, 255, 0.94);
+                border: 1px solid rgba(219, 226, 240, 0.95);
+                border-radius: 28px;
+                box-shadow: var(--shadow);
+            }
+
+            .hero-copy {
+                padding: 34px;
+            }
+
+            .eyebrow {
+                display: inline-flex;
+                align-items: center;
+                gap: 8px;
+                padding: 8px 12px;
+                border-radius: 999px;
+                background: var(--surface-muted);
+                color: var(--primary-dark);
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 0.02em;
+                text-transform: uppercase;
+            }
+
+            h1 {
+                margin: 18px 0 12px;
+                font-size: clamp(32px, 5vw, 52px);
+                line-height: 1.06;
+            }
+
+            .lead {
+                margin: 0;
+                max-width: 860px;
+                color: var(--text-muted);
+                font-size: 18px;
+                line-height: 1.75;
+            }
+
+            .meta-grid {
+                display: grid;
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 14px;
+                margin-top: 28px;
+            }
+
+            .meta-card {
+                padding: 18px;
+                border-radius: 20px;
+                background: var(--surface-soft);
+                border: 1px solid #e2e8f0;
+            }
+
+            .meta-card strong {
+                display: block;
+                margin-bottom: 8px;
+            }
+
+            .meta-card span {
+                display: block;
+                color: var(--text-muted);
+                line-height: 1.6;
+                font-size: 14px;
+            }
+
+            .layout {
+                display: grid;
+                grid-template-columns: 280px 1fr;
+                gap: 24px;
+                padding-bottom: 42px;
+            }
+
+            .sidebar {
+                position: sticky;
+                top: 24px;
+                align-self: start;
+                padding: 24px;
+            }
+
+            .sidebar h2,
+            .content h2,
+            .content h3 {
+                margin-top: 0;
+            }
+
+            .sidebar ul {
+                margin: 0;
+                padding-left: 18px;
+                color: var(--text-muted);
+                line-height: 1.8;
+            }
+
+            .sidebar li + li {
+                margin-top: 4px;
+            }
+
+            .content {
+                padding: 32px;
+            }
+
+            .section {
+                margin-bottom: 32px;
+            }
+
+            .section:last-child {
+                margin-bottom: 0;
+            }
+
+            .section h2 {
+                margin-bottom: 12px;
+                font-size: 28px;
+            }
+
+            .section h3 {
+                margin: 20px 0 10px;
+                font-size: 19px;
+            }
+
+            .section p,
+            .section li {
+                color: var(--text-muted);
+                line-height: 1.75;
+            }
+
+            .section ul {
+                margin: 0;
+                padding-left: 20px;
+            }
+
+            .section ul li + li {
+                margin-top: 6px;
+            }
+
+            .callout {
+                margin-top: 16px;
+                padding: 16px 18px;
+                border-radius: 18px;
+                border: 1px solid var(--warning-border);
+                background: var(--warning-bg);
+                color: var(--warning-text);
+                line-height: 1.7;
+            }
+
+            .success-box {
+                margin-top: 16px;
+                padding: 16px 18px;
+                border-radius: 18px;
+                border: 1px solid var(--success-border);
+                background: var(--success-bg);
+                color: var(--success-text);
+                line-height: 1.7;
+            }
+
+            .code-block {
+                margin: 14px 0 0;
+                padding: 16px;
+                border-radius: 20px;
+                background: #0f172a;
+                color: #e2e8f0;
+                border: 1px solid #1e293b;
+                overflow-x: auto;
+                font-size: 13px;
+                line-height: 1.7;
+            }
+
+            .inline-code {
+                padding: 2px 7px;
+                border-radius: 8px;
+                background: #eff6ff;
+                color: var(--primary-dark);
+                font-size: 13px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 16px;
+                overflow: hidden;
+                border-radius: 18px;
+                border: 1px solid var(--border);
+            }
+
+            th,
+            td {
+                padding: 14px 12px;
+                border-bottom: 1px solid #e2e8f0;
+                text-align: left;
+                vertical-align: top;
+                font-size: 14px;
+            }
+
+            th {
+                background: #f8fafc;
+                font-size: 12px;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: var(--text-muted);
+            }
+
+            tr:last-child td {
+                border-bottom: 0;
+            }
+
+            .footer-copy {
+                padding: 0 0 40px;
+                color: var(--text-muted);
+                font-size: 14px;
+            }
+
+            @media (max-width: 980px) {
+                .layout {
+                    grid-template-columns: 1fr;
+                }
+
+                .sidebar {
+                    position: static;
+                }
+
+                .meta-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+
+            @media (max-width: 640px) {
+                .topbar {
+                    flex-direction: column;
+                    align-items: flex-start;
+                }
+
+                .nav-actions {
+                    width: 100%;
+                }
+
+                .nav-actions .button {
+                    flex: 1 1 auto;
+                }
+
+                .hero-copy,
+                .sidebar,
+                .content {
+                    padding: 24px;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="shell">
+            <header class="topbar">
+                <a class="brand" href="{{ route('home') }}">
+                    <span class="brand-badge">N</span>
+                    <span class="brand-copy">
+                        <strong>payment.naeva.id</strong>
+                        <span>Centralized payment gateway service</span>
+                    </span>
+                </a>
+
+                <nav class="nav-actions">
+                    <a class="button" href="{{ route('home') }}">Beranda</a>
+                    @auth
+                        <a class="button" href="{{ route('dashboard') }}">Dashboard</a>
+                    @else
+                        <a class="button" href="{{ route('login') }}">Login</a>
+                        <a class="button button-primary" href="{{ route('register') }}">Register</a>
+                    @endauth
+                </nav>
+            </header>
+
+            <main class="hero">
+                <section class="panel hero-copy">
+                    <span class="eyebrow">Dokumentasi API Publik</span>
+                    <h1>Dokumentasi integrasi `payment.naeva.id` untuk seluruh project internal Naeva.</h1>
+                    <p class="lead">
+                        Halaman ini dapat diakses publik untuk mempermudah integrasi antar-server. Seluruh contoh di bawah
+                        mengikuti implementasi yang aktif saat ini, termasuk autentikasi HMAC, flow charge, lookup transaksi,
+                        webhook Midtrans, dan callback forwarding ke project asal.
+                    </p>
+
+                    <div class="meta-grid">
+                        <div class="meta-card">
+                            <strong>Base URL</strong>
+                            <span><code class="inline-code">https://payment.naeva.id/api/v1</code></span>
+                        </div>
+                        <div class="meta-card">
+                            <strong>Auth Utama</strong>
+                            <span>HMAC per request dengan <code class="inline-code">X-App-ID</code>, <code class="inline-code">X-Timestamp</code>, dan <code class="inline-code">X-Payment-Signature</code>.</span>
+                        </div>
+                        <div class="meta-card">
+                            <strong>Callback</strong>
+                            <span>Forwarding status pembayaran diproses async melalui queue dan memiliki retry operasional.</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="layout">
+                    <aside class="panel sidebar">
+                        <h2>Daftar Isi</h2>
+                        <ul>
+                            <li>Base URL dan auth</li>
+                            <li>Endpoint project profile</li>
+                            <li>Endpoint create charge</li>
+                            <li>Endpoint transaction lookup</li>
+                            <li>Webhook Midtrans</li>
+                            <li>Callback forwarding</li>
+                            <li>Status transaksi</li>
+                            <li>Error reference</li>
+                            <li>Contoh cURL</li>
+                        </ul>
+                    </aside>
+
+                    <article class="panel content">
+                        <section class="section">
+                            <h2>Autentikasi Client App</h2>
+                            <p>
+                                Autentikasi yang disarankan adalah HMAC per request. Integrasi legacy dengan
+                                <code class="inline-code">X-Secret-Key</code> masih bisa dipakai sementara selama mode migrasi
+                                belum dimatikan.
+                            </p>
+
+                            <h3>Header utama</h3>
+                            <pre class="code-block"><code>X-App-ID: project_a_prod
+X-Timestamp: 1760832000
+X-Payment-Signature: &lt;hmac_signature&gt;
+Content-Type: application/json
+Accept: application/json</code></pre>
+
+                            <h3>String yang ditandatangani</h3>
+                            <pre class="code-block"><code>{HTTP_METHOD}
+{REQUEST_PATH}
+{APP_ID}
+{UNIX_TIMESTAMP}
+{SHA256_RAW_BODY}</code></pre>
+
+                            <h3>Contoh pembentukan signature</h3>
+                            <pre class="code-block"><code>$rawBody = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+$bodyHash = hash('sha256', $rawBody);
+
+$stringToSign = implode("\n", [
+    'POST',
+    '/api/v1/charge',
+    'project_a_prod',
+    $timestamp,
+    $bodyHash,
+]);
+
+$signature = hash_hmac('sha256', $stringToSign, $secretKey);</code></pre>
+
+                            <div class="callout">
+                                Request timestamp harus berupa Unix timestamp dan saat ini diverifikasi dengan toleransi
+                                sekitar 300 detik terhadap waktu server.
+                            </div>
+                        </section>
+
+                        <section class="section">
+                            <h2>GET /projects/me</h2>
+                            <p>Dipakai untuk memverifikasi identitas project yang sedang terhubung.</p>
+
+                            <h3>Response 200</h3>
+                            <pre class="code-block"><code>{
+  "data": {
+    "app_id": "project_a_prod",
+    "project_name": "Project A",
+    "default_callback_url": "https://project-a.naeva.id/payment/callback",
+    "is_active": true
+  }
+}</code></pre>
+                        </section>
+
+                        <section class="section">
+                            <h2>POST /charge</h2>
+                            <p>Endpoint utama untuk membuat transaksi baru dan mendapatkan token Snap Midtrans.</p>
+
+                            <h3>Request body</h3>
+                            <pre class="code-block"><code>{
+  "order_id": "INV-PROJECTA-2026-001",
+  "gross_amount": 150000,
+  "currency": "IDR",
+  "customer_details": {
+    "first_name": "Budi",
+    "last_name": "Santoso",
+    "email": "budi@example.com",
+    "phone": "081234567890"
+  },
+  "item_details": [
+    {
+      "id": "SKU-INV-001",
+      "price": 150000,
+      "quantity": 1,
+      "name": "Invoice Payment"
+    }
+  ],
+  "custom_callback_url": "https://project-a.naeva.id/api/payment/notification",
+  "metadata": {
+    "invoice_id": 1001,
+    "source": "project-a"
+  }
+}</code></pre>
+
+                            <h3>Response 201</h3>
+                            <pre class="code-block"><code>{
+  "status": "success",
+  "project": {
+    "app_id": "project_a_prod",
+    "name": "Project A"
+  },
+  "order_id": "INV-PROJECTA-2026-001",
+  "gateway_order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
+  "token": "snap-token-xyz",
+  "redirect_url": "https://app.midtrans.com/snap/v2/vtweb/snap-token-xyz"
+}</code></pre>
+
+                            <h3>Field penting</h3>
+                            <ul>
+                                <li><code class="inline-code">order_id</code> wajib dan merepresentasikan ID order dari client app.</li>
+                                <li><code class="inline-code">gross_amount</code> wajib, integer, minimal 1.</li>
+                                <li><code class="inline-code">customer_details</code> wajib, minimal berisi <code class="inline-code">first_name</code>.</li>
+                                <li><code class="inline-code">custom_callback_url</code> opsional untuk override callback URL default project.</li>
+                                <li><code class="inline-code">expires_at</code> opsional dan harus berupa waktu setelah saat ini.</li>
+                            </ul>
+                        </section>
+
+                        <section class="section">
+                            <h2>GET /transactions/{gateway_order_id}</h2>
+                            <p>Dipakai untuk mengambil status transaksi berdasarkan gateway order id yang dibuat oleh layanan payment.</p>
+
+                            <h3>Response 200</h3>
+                            <pre class="code-block"><code>{
+  "data": {
+    "gateway_order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
+    "order_id": "INV-PROJECTA-2026-001",
+    "amount": 150000,
+    "currency": "IDR",
+    "status": "pending",
+    "callback_status": "queued",
+    "payment_type": "bank_transfer",
+    "redirect_url": "https://app.midtrans.com/snap/v2/vtweb/snap-token-xyz"
+  }
+}</code></pre>
+                        </section>
+
+                        <section class="section">
+                            <h2>Webhook Midtrans</h2>
+                            <p>
+                                Endpoint <code class="inline-code">POST /api/v1/callback/midtrans</code> digunakan oleh Midtrans.
+                                Endpoint ini memverifikasi signature webhook, mencari transaksi internal, memperbarui status, lalu
+                                menjadwalkan callback async ke project asal.
+                            </p>
+
+                            <h3>Response invalid signature</h3>
+                            <pre class="code-block"><code>{
+  "message": "Invalid signature."
+}</code></pre>
+
+                            <h3>Response accepted</h3>
+                            <pre class="code-block"><code>{
+  "status": "accepted"
+}</code></pre>
+                        </section>
+
+                        <section class="section">
+                            <h2>Callback Forwarding ke Project Asal</h2>
+                            <p>
+                                Setelah webhook Midtrans valid diproses, <code class="inline-code">payment.naeva.id</code> akan
+                                mengirim callback ke <code class="inline-code">custom_callback_url</code> atau
+                                <code class="inline-code">default_callback_url</code> project.
+                            </p>
+
+                            <h3>Header callback</h3>
+                            <pre class="code-block"><code>User-Agent: Naeva-Payment-Callback/1.0
+X-Payment-App-Id: project_a_prod
+X-Payment-Event: payment.status.updated
+X-Payment-Signature: &lt;hmac_sha256_payload_signature&gt;
+Content-Type: application/json
+Accept: application/json</code></pre>
+
+                            <h3>Payload callback</h3>
+                            <pre class="code-block"><code>{
+  "order_id": "INV-PROJECTA-2026-001",
+  "gateway_order_id": "PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45",
+  "transaction_status": "settlement",
+  "payment_type": "bank_transfer",
+  "gross_amount": 150000,
+  "transaction_time": "2026-06-20 02:30:00",
+  "metadata": {
+    "invoice_id": 1001,
+    "source": "project-a"
+  }
+}</code></pre>
+
+                            <div class="success-box">
+                                Callback dengan response HTTP `2xx` dianggap sukses. Response non-`2xx` atau network failure
+                                akan masuk retry async sesuai backoff operasional yang aktif di service.
+                            </div>
+                        </section>
+
+                        <section class="section">
+                            <h2>Status dan Error</h2>
+                            <h3>Status transaksi</h3>
+                            <ul>
+                                <li><code class="inline-code">pending</code></li>
+                                <li><code class="inline-code">settlement</code></li>
+                                <li><code class="inline-code">failed</code></li>
+                                <li><code class="inline-code">expired</code></li>
+                                <li><code class="inline-code">cancelled</code></li>
+                                <li><code class="inline-code">refunded</code></li>
+                            </ul>
+
+                            <h3>Status callback</h3>
+                            <ul>
+                                <li><code class="inline-code">pending</code></li>
+                                <li><code class="inline-code">queued</code></li>
+                                <li><code class="inline-code">success</code></li>
+                                <li><code class="inline-code">failed</code></li>
+                                <li><code class="inline-code">skipped</code></li>
+                            </ul>
+
+                            <h3>Error umum</h3>
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>HTTP</th>
+                                        <th>Message</th>
+                                        <th>Arti</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>401</td>
+                                        <td><code>Missing project authentication app id header.</code></td>
+                                        <td>Header <code class="inline-code">X-App-ID</code> tidak dikirim.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>401</td>
+                                        <td><code>Missing project HMAC authentication headers.</code></td>
+                                        <td>Header HMAC tidak lengkap.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>401</td>
+                                        <td><code>Invalid or expired project request timestamp.</code></td>
+                                        <td>Timestamp di luar toleransi.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>401</td>
+                                        <td><code>Invalid project request signature.</code></td>
+                                        <td>Signature HMAC tidak cocok.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>401</td>
+                                        <td><code>Invalid project credentials.</code></td>
+                                        <td><code class="inline-code">app_id</code> atau secret tidak valid.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>403</td>
+                                        <td><code>Invalid signature.</code></td>
+                                        <td>Signature webhook Midtrans tidak valid.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>404</td>
+                                        <td><code>Transaction not found.</code></td>
+                                        <td>Transaksi tidak ditemukan.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>422</td>
+                                        <td>Laravel validation error</td>
+                                        <td>Payload request tidak lolos validasi.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </section>
+
+                        <section class="section">
+                            <h2>Contoh cURL</h2>
+                            <h3>Create charge</h3>
+                            <pre class="code-block"><code>curl --request POST \
+  --url https://payment.naeva.id/api/v1/charge \
+  --header "Accept: application/json" \
+  --header "Content-Type: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: &lt;signature&gt;" \
+  --data '{
+    "order_id": "INV-PROJECTA-2026-001",
+    "gross_amount": 150000,
+    "customer_details": {
+      "first_name": "Budi",
+      "email": "budi@example.com"
+    }
+  }'</code></pre>
+
+                            <h3>Project profile</h3>
+                            <pre class="code-block"><code>curl --request GET \
+  --url https://payment.naeva.id/api/v1/projects/me \
+  --header "Accept: application/json" \
+  --header "X-App-ID: project_a_prod" \
+  --header "X-Timestamp: 1760832000" \
+  --header "X-Payment-Signature: &lt;signature&gt;"</code></pre>
+                        </section>
+                    </article>
+                </section>
+            </main>
+
+            <footer class="footer-copy">
+                Dokumen publik ini diringkas dari implementasi aktif dan rencana di folder `docs/`. Untuk pengembangan internal,
+                file sumber tetap tersedia di repository pada `docs/API.md`.
+            </footer>
+        </div>
+    </body>
+</html>

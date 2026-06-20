@@ -290,6 +290,7 @@
                 </a>
 
                 <nav class="nav-actions">
+                    <a class="button button-secondary" href="{{ route('docs.api') }}">Dokumentasi API</a>
                     @auth
                         <a class="button button-secondary" href="{{ route('dashboard') }}">Dashboard</a>
                         <form method="POST" action="{{ route('logout') }}" style="margin: 0;">
@@ -313,6 +314,7 @@
                     </p>
 
                     <div class="hero-actions">
+                        <a class="button button-secondary" href="{{ route('docs.api') }}">Lihat Dokumentasi API</a>
                         @auth
                             <a class="button button-primary" href="{{ route('dashboard') }}">Buka Dashboard</a>
                             <a class="button button-secondary" href="{{ route('password.request') }}">Reset Password</a>

@@ -142,6 +142,42 @@ Sistem ini menggunakan arsitektur \*\*Multi-Tenant (App-ID based)\*\*. Setiap pr
 
 
 
+\### 5.5 Dokumentasi API Pengguna (Developer-Facing)
+
+\* Sistem harus memiliki dokumentasi API yang dapat dipakai oleh Internal Developer sebagai pengguna layanan `payment.naeva.id`.
+
+\* Dokumentasi ini minimal mencakup:
+
+&#x20;   \* tujuan endpoint dan kapan endpoint dipakai
+
+&#x20;   \* base URL production dan sandbox/testing jika dibutuhkan
+
+&#x20;   \* skema autentikasi antar-server yang berlaku (`X-App-ID`, HMAC signature, timestamp, dan fallback legacy sementara jika masih diizinkan)
+
+&#x20;   \* contoh header request lengkap
+
+&#x20;   \* contoh body request JSON
+
+&#x20;   \* contoh response sukses dan response error
+
+&#x20;   \* daftar status transaksi yang mungkin diterima client app
+
+&#x20;   \* contract payload callback/webhook forwarding ke project asal
+
+&#x20;   \* langkah integrasi end-to-end dari create charge sampai menerima callback status pembayaran
+
+\* Pada fase awal, dokumentasi boleh disiapkan sebagai \*living document\* di folder `docs/` sebelum nantinya dipublikasikan ke format yang lebih ramah pengguna (misalnya halaman docs internal, Postman collection, atau OpenAPI/Swagger).
+
+\* Deliverable dokumentasi awal yang direncanakan:
+
+&#x20;   \* `docs/API.md` untuk panduan penggunaan API
+
+&#x20;   \* contoh request siap pakai untuk `charge`, `project profile`, `transaction lookup`, dan callback verification
+
+&#x20;   \* contoh snippet integrasi untuk client app internal
+
+
+
 \---
 
 
@@ -157,6 +193,8 @@ Sistem ini menggunakan arsitektur \*\*Multi-Tenant (App-ID based)\*\*. Setiap pr
 \* API `payment.naeva.id` yang diakses oleh Client Apps wajib menggunakan autentikasi Bearer Token (kombinasi `app\_id` dan `secret\_key`) atau signature berbasis HMAC.
 
 \* Kredensial Midtrans (Server Key) wajib disimpan dengan aman di environment variable (.env) dan terenkripsi.
+
+\* Dokumentasi API tidak boleh membuka secret aktual, tetapi harus menjelaskan format header, pembentukan signature, dan contoh request dummy yang aman untuk dibagikan.
 
 
 
@@ -174,6 +212,22 @@ Sistem ini menggunakan arsitektur \*\*Multi-Tenant (App-ID based)\*\*. Setiap pr
 
 \## 7. API Specification (Draft Singkat)
 
+Bagian ini adalah draft spesifikasi teknis awal. Pada tahap berikutnya perlu diturunkan menjadi dokumentasi pengguna yang lebih lengkap, terstruktur, dan siap dipakai oleh tim integrasi.
+
+Rencana isi dokumentasi pengguna tersebut:
+
+\* ringkasan alur integrasi
+
+\* autentikasi request dengan contoh header lengkap
+
+\* contoh request/response per endpoint
+
+\* daftar error code dan penyebab umum
+
+\* contoh payload callback dari `payment.naeva.id` ke project asal
+
+\* contoh skenario retry dan idempotensi
+
 
 
 \### 1. Inisiasi Pembayaran (Client App -> Payment Service)
@@ -186,7 +240,11 @@ Sistem ini menggunakan arsitektur \*\*Multi-Tenant (App-ID based)\*\*. Setiap pr
 
 &#x20;   \* `X-App-ID: project\_a\_prod`
 
-&#x20;   \* `X-Secret-Key: secret\_abc123...`
+&#x20;   \* `X-Timestamp: 1760000000`
+
+&#x20;   \* `X-Payment-Signature: <hmac-sha256-signature>`
+
+&#x20;   \* `X-Secret-Key: secret\_abc123...` (\*legacy fallback sementara selama masa migrasi, bukan target akhir\*)
 
 \* \*\*Request Body:\*\*
 
@@ -256,6 +314,16 @@ Sistem ini menggunakan arsitektur \*\*Multi-Tenant (App-ID based)\*\*. Setiap pr
 
 &#x20;   ```
 
+\* Dokumentasi pengguna final nantinya juga harus menjelaskan:
+
+&#x20;   \* header yang ikut dikirim saat callback forwarding
+
+&#x20;   \* cara verifikasi signature callback dari `payment.naeva.id`
+
+&#x20;   \* ekspektasi HTTP status code dari client app
+
+&#x20;   \* perilaku retry jika endpoint client app gagal merespons
+
 
 
 \---
@@ -312,5 +380,7 @@ Sistem ini menggunakan arsitektur \*\*Multi-Tenant (App-ID based)\*\*. Setiap pr
 
 3\.  \*\*Fase 3: Deployment \& Integrasi Pilot Project\*\* (Deploy ke `payment.naeva.id` dan mencoba menghubungkan 1 proyek pertama Anda sebagai uji coba).
 
-4\.  \*\*Fase 4: Rollout\*\* (Menghubungkan proyek-proyek lainnya).
+4\.  \*\*Fase 4: Dokumentasi Integrasi Developer\*\* (Menyusun dokumentasi API pengguna yang lengkap di `docs/API.md`, termasuk auth, contoh header, request, response, error, dan callback contract).
+
+5\.  \*\*Fase 5: Rollout\*\* (Menghubungkan proyek-proyek lainnya dengan acuan dokumentasi yang sudah stabil).
 

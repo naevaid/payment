@@ -13,8 +13,20 @@ class ExampleTest extends TestCase
 
         $response->assertOk()
             ->assertSee('payment.naeva.id')
+            ->assertSee('Dokumentasi API')
             ->assertSee('Login')
             ->assertSee('Register');
+    }
+
+    public function test_the_public_api_documentation_page_is_accessible(): void
+    {
+        $response = $this->get('/docs/api');
+
+        $response->assertOk()
+            ->assertSee('Dokumentasi integrasi')
+            ->assertSee('GET /projects/me')
+            ->assertSee('POST /charge')
+            ->assertSee('Callback Forwarding ke Project Asal');
     }
 
     public function test_the_login_page_is_accessible(): void

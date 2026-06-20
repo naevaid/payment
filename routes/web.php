@@ -15,6 +15,8 @@ Route::get('/', function () {
     return view('home');
 })->name('home');
 
+Route::view('/docs/api', 'api-docs')->name('docs.api');
+
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthenticatedSessionController::class, 'create'])->name('login');
     Route::post('/login', [AuthenticatedSessionController::class, 'store']);
