@@ -39,6 +39,11 @@ class Project extends Model
         return $this->hasMany(Transaction::class);
     }
 
+    public function callbackForwardingLogs(): HasMany
+    {
+        return $this->hasMany(CallbackForwardingLog::class);
+    }
+
     #[Scope]
     protected function active(Builder $query): void
     {

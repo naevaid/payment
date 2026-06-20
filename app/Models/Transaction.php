@@ -6,6 +6,7 @@ use App\Enums\CallbackStatus;
 use App\Enums\TransactionStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Transaction extends Model
 {
@@ -53,5 +54,15 @@ class Transaction extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    public function webhookLogs(): HasMany
+    {
+        return $this->hasMany(MidtransWebhookLog::class);
+    }
+
+    public function callbackForwardingLogs(): HasMany
+    {
+        return $this->hasMany(CallbackForwardingLog::class);
     }
 }

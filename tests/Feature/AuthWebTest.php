@@ -68,7 +68,7 @@ class AuthWebTest extends TestCase
         $response = $this->actingAs($user)->get('/dashboard');
 
         $response->assertOk()
-            ->assertSee('Selamat datang, Naeva Business.')
+            ->assertSee('Dashboard utama payment service')
             ->assertSee('business@naeva.id');
     }
 

@@ -4,6 +4,10 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
+use App\Http\Controllers\Dashboard\CallbackForwardingLogController;
+use App\Http\Controllers\Dashboard\ProjectController;
+use App\Http\Controllers\Dashboard\TransactionController;
+use App\Http\Controllers\Dashboard\WebhookLogController;
 use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
 
@@ -27,6 +31,13 @@ Route::middleware('guest')->group(function (): void {
 
 Route::middleware('auth')->group(function (): void {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::resource('/dashboard/projects', ProjectController::class)->names('dashboard.projects');
+    Route::get('/dashboard/transactions', [TransactionController::class, 'index'])->name('dashboard.transactions.index');
+    Route::get('/dashboard/transactions/{transaction}', [TransactionController::class, 'show'])->name('dashboard.transactions.show');
+    Route::get('/dashboard/webhook-logs', [WebhookLogController::class, 'index'])->name('dashboard.webhook-logs.index');
+    Route::get('/dashboard/webhook-logs/{webhookLog}', [WebhookLogController::class, 'show'])->name('dashboard.webhook-logs.show');
+    Route::get('/dashboard/callback-logs', [CallbackForwardingLogController::class, 'index'])->name('dashboard.callback-logs.index');
+    Route::get('/dashboard/callback-logs/{callbackLog}', [CallbackForwardingLogController::class, 'show'])->name('dashboard.callback-logs.show');
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
 });
 
