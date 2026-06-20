@@ -38,7 +38,10 @@ class ExampleTest extends TestCase
             ->assertSee('Contoh request cURL')
             ->assertSee('Example request body')
             ->assertSee('Example response dari endpoint project')
-            ->assertSee('Contoh payload webhook dari Midtrans');
+            ->assertSee('Contoh payload webhook dari Midtrans')
+            ->assertSee('Contoh request mentah callback test')
+            ->assertSee('Raw body callback status transaksi')
+            ->assertSee('Signature callback payment tidak valid.');
     }
 
     public function test_the_midtrans_finish_redirect_page_is_accessible(): void

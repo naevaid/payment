@@ -740,6 +740,35 @@ Content-Type: application/json
 Accept: application/json
 ```
 
+### Contoh Request Mentah Callback Test
+
+Request ini dipakai saat tombol `Test Callback URL` dijalankan dari dashboard project.
+
+```http
+POST /api/payment/callback HTTP/1.1
+Host: client-app.example.com
+User-Agent: Naeva-Payment-Callback/1.0
+X-Payment-App-Id: APP-FI4YVWSGZHXN
+X-Payment-Event: payment.callback.test
+X-Payment-Attempt: 1
+X-Payment-Timestamp: 1760860800
+X-Payment-Delivery-Id: 7d9d1f42-4d4c-4a47-a5e7-9f4050cc91d0
+X-Payment-Signature: a13bcceff73a921a3e709ff52b9148f1944067ef81e7b40a320c388953ed875e
+Content-Type: application/json
+Accept: application/json
+Content-Length: 278
+
+{"test":true,"event":"payment.callback.test","message":"This is a callback connectivity test from payment.naeva.id","app_id":"APP-FI4YVWSGZHXN","project_name":"LevelUP adsPRO","callback_url":"https://client-app.example.com/api/payment/callback","sent_at":"2026-06-20 15:00:00"}
+```
+
+### Raw Body Callback Test
+
+Nilai `X-Payment-Signature` di atas dihitung dari body mentah berikut, tanpa spasi tambahan dan tanpa reformat JSON:
+
+```json
+{"test":true,"event":"payment.callback.test","message":"This is a callback connectivity test from payment.naeva.id","app_id":"APP-FI4YVWSGZHXN","project_name":"LevelUP adsPRO","callback_url":"https://client-app.example.com/api/payment/callback","sent_at":"2026-06-20 15:00:00"}
+```
+
 ### Example Request Callback
 
 ```text
@@ -763,6 +792,35 @@ POST https://client-app.example.com/api/payment/callback
 }
 ```
 
+### Contoh Request Mentah Callback Status Transaksi
+
+Request ini dipakai saat `payment.naeva.id` meneruskan update status transaksi ke callback URL project.
+
+```http
+POST /api/payment/callback HTTP/1.1
+Host: client-app.example.com
+User-Agent: Naeva-Payment-Callback/1.0
+X-Payment-App-Id: APP-FI4YVWSGZHXN
+X-Payment-Event: payment.status.updated
+X-Payment-Attempt: 2
+X-Payment-Timestamp: 1760859000
+X-Payment-Delivery-Id: delivery-002
+X-Payment-Signature: d52b708685994945aac1213abb8b22b973ff1ffcd3e76f32f92fac387f2f32b1
+Content-Type: application/json
+Accept: application/json
+Content-Length: 284
+
+{"order_id":"INV-PROJECTA-2026-001","gateway_order_id":"PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45","transaction_status":"settlement","payment_type":"bank_transfer","gross_amount":150000,"transaction_time":"2026-06-20 14:30:00","metadata":{"invoice_id":1001,"source":"project-a"}}
+```
+
+### Raw Body Callback Status Transaksi
+
+Nilai `X-Payment-Signature` di atas dihitung dari body mentah berikut:
+
+```json
+{"order_id":"INV-PROJECTA-2026-001","gateway_order_id":"PROJECT-A-PROD-01JY3G0T2T8V40Q0V4K2QJ8G45","transaction_status":"settlement","payment_type":"bank_transfer","gross_amount":150000,"transaction_time":"2026-06-20 14:30:00","metadata":{"invoice_id":1001,"source":"project-a"}}
+```
+
 ### Example Response dari Client App
 
 ```json
@@ -782,6 +840,18 @@ $signature = hash_hmac(
     json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
     $projectSecretKey
 );
+```
+
+Pada sisi penerima, verifikasi harus memakai body mentah request, bukan array hasil parsing yang di-encode ulang:
+
+```php
+$rawBody = $request->getContent();
+$expectedSignature = hash_hmac('sha256', $rawBody, $projectSecretKey);
+$receivedSignature = (string) $request->header('X-Payment-Signature');
+
+if (! hash_equals($expectedSignature, $receivedSignature)) {
+    abort(401, 'Signature callback payment tidak valid.');
+}
 ```
 
 ### Ekspektasi Response dari Client App
